@@ -754,3 +754,17 @@ function loadExampleFile(path) {
       alert("Could not load example: " + err.message);
     });
 }
+
+function loadGrammarFile(path) {
+  fetch(path)
+    .then(response => {
+      if (!response.ok) throw new Error(`Failed to load ${path}`);
+      return response.text();
+    })
+    .then(data => {
+      grammarEditor.setValue(data);
+    })
+    .catch(err => {
+      alert("Could not load grammar: " + err.message);
+    });
+}

@@ -64,7 +64,12 @@
   <div class="split-pane">
     <div class="editor-container" id="left-pane">
       <div class="editor-block" id="grammar-block">
-        <h3>Grammar:</h3>
+        <div class="editor-header">
+          <h3>Grammar</h3>
+          <div class="example-links">
+            <a href="#" onclick="loadGrammarFile('grammars/bruker.lark')">Reload Grammar</a>
+          </div>
+        </div>
         <textarea id="grammar"></textarea>
       </div>
 
