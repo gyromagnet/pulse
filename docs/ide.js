@@ -308,11 +308,11 @@ function saveSettingsAndClose() {
 
 function loadSettings() {
   document.getElementById("parserSelect").value =
-    localStorage.getItem("parser") || "lalr";
+    localStorage.getItem("parser") || "earley";
   document.getElementById("lexerSelect").value =
-    localStorage.getItem("lexer") || "basic";
+    localStorage.getItem("lexer") || "dynamic";
   document.getElementById("regexSelect").value =
-    localStorage.getItem("regex") || "re";
+    localStorage.getItem("regex") || "regex";
   document.getElementById("debugCheckbox").checked =
     localStorage.getItem("debug") === "true";
   document.getElementById("strictCheckbox").checked =
@@ -322,7 +322,7 @@ function loadSettings() {
   document.getElementById("showHiddenCheckbox").checked =
     localStorage.getItem("show_hidden") === "true";
   document.getElementById("startInput").value =
-    localStorage.getItem("start") || "";
+    localStorage.getItem("start") || "pulseprogram";
 
   const grammarBlock = document.getElementById("grammar-block");
   const inputBlock = document.getElementById("input-block");
