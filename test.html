@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Pyodide + CodeMirror Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- CodeMirror CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.css">
+
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 1em;
+      max-width: 800px;
+      margin: auto;
+    }
+
+    #editor {
+      border: 1px solid #ccc;
+      height: 300px;
+    }
+
+    #output {
+      white-space: pre-wrap;
+      background: #f8f8f8;
+      border: 1px solid #ddd;
+      padding: 1em;
+      margin-top: 1em;
+    }
+
+    button {
+      margin-top: 1em;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Python in the Browser with Pyodide + CodeMirror</h1>
+
+  <textarea id="editor"></textarea>
+  <br>
+  <button id="run-button">Run Python Code</button>
+
+  <h2>Output:</h2>
+  <div id="output"></div>
+
+  <!-- CodeMirror JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/python/python.min.js"></script>
+
+  <!-- Pyodide -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
+
+  <script>
+    let editor = CodeMirror.fromTextArea(document.getElementById("editor"), {
+      mode: "python",
+      lineNumbers: true,
+      theme: "default"
+    });
+
+    let pyodideReadyPromise = loadPyodide();
+
+    document.getElementById("run-button").addEventListener("click", async () => {
+      const code = editor.getValue();
+      const outputEl = document.getElementById("output");
+      outputEl.textContent = "Running...";
+      try {
+        let pyodide = await pyodideReadyPromise;
+        let result = await pyodide.runPythonAsync(code);
+        outputEl.textContent = result;
+      } catch (err) {
+        outputEl.textContent = "Error:\n" + err;
+      }
+    });
+  </script>
+</body>
+
+</html>
