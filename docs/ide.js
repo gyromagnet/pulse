@@ -5,6 +5,24 @@ let pyodide = null;
 async function setupPyodide() {
   pyodide = await loadPyodide();
   await pyodide.loadPackage("micropip");
+  try {
+    await pyodide.runPythonAsync(`
+import micropip
+await micropip.install("regex")
+`);
+    console.log("✅ regex installed!");
+  } catch (err) {
+    console.error("❌ Failed to install regex:", err);
+  }
+  try {
+    await pyodide.runPythonAsync(`
+import micropip
+await micropip.install("lark")
+      `);
+    console.log("✅ lark installed!");
+  } catch (err) {
+    console.error("❌ Failed to install lark:", err);
+  }
 }
 
 setupPyodide();
@@ -669,6 +687,7 @@ async function runParser() {
 
   try {
     const result = await pyodide.runPythonAsync(`
+
 import micropip
 await micropip.install("regex")
 await micropip.install("lark")
@@ -721,3 +740,17 @@ json.dumps(tree_to_dict(tree))
   }
 }
 
+
+function loadExampleFile(path) {
+  fetch(path)
+    .then(response => {
+      if (!response.ok) throw new Error(`Failed to load ${path}`);
+      return response.text();
+    })
+    .then(data => {
+      inputEditor.setValue(data);
+    })
+    .catch(err => {
+      alert("Could not load example: " + err.message);
+    });
+}

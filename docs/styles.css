@@ -304,3 +304,37 @@ pre#output {
     visibility: hidden;
   }
 }
+
+.qr-float {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 100px;
+  height: 100px;
+  z-index: 1000;
+  opacity: 0.9;
+  transition: opacity 0.3s;
+}
+
+.qr-float:hover {
+  opacity: 1;
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 10px 5px 10px;
+}
+
+.example-links a {
+  margin-left: 10px;
+  text-decoration: none;
+  color: #0074d9;
+  font-size: 0.9em;
+  cursor: pointer;
+}
+
+.example-links a:hover {
+  text-decoration: underline;
+}

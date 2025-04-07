@@ -3,8 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-
-  <title>Lark IDE - Local</title>
+  <title>Pulse Program Parser</title>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css"
     integrity="sha512-uf06llspW44/LZpHzHT6qBOIVODjWtv4MxCricRxkzvopAlSWnTf6hpZTFxuuZcuNE9CBQhqE0Seu1CoRk84nQ=="
@@ -60,7 +59,7 @@
     </svg>
   </div>
 
-  <h1>Lark IDE (Local)</h1>
+  <h1>Pulse Program Parser</h1>
 
   <div class="split-pane">
     <div class="editor-container" id="left-pane">
@@ -74,7 +73,14 @@
       </div>
 
       <div class="editor-block" id="input-block">
-        <h3>Input Text:</h3>
+
+        <div class="editor-header">
+          <h3>Pulse Code</h3>
+          <div class="example-links">
+            <a href="#" onclick="loadExampleFile('example_code/zg')">zg</a>
+            <a href="#" onclick="loadExampleFile('example_code/hnco_3c_pfg_lek_600_sh_cp')">HNCO</a>
+          </div>
+        </div>
         <textarea id="input"></textarea>
       </div>
       <div class="editor-footer">
@@ -96,6 +102,8 @@
     integrity="sha512-8RnEqURPUc5aqFEN04aQEiPlSAdE0jlFS/9iGgUyNtwFnSKCXhmB6ZTNl7LnDtDWKabJIASzXrzD0K+LYexU9g=="
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="ide.js"></script>
+
+  <img src="img/qr.gif" alt="QR Code" class="qr-float" />
 </body>
 
 </html>
