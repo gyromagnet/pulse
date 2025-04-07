@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Lark IDE - Local</title>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <div class="settings-popover" id="settingsPanel">
+    <h4>Parser</h4>
+    <label>Parser:
+      <select id="parserSelect">
+        <option value="lalr">LALR</option>
+        <option value="earley">Earley</option>
+      </select>
+    </label>
+    <label>Lexer:
+      <select id="lexerSelect">
+        <option value="basic">basic</option>
+        <option value="contextual">contextual</option>
+        <option value="dynamic">dynamic</option>
+        <option value="dynamic_complete">dynamic_complete</option>
+      </select>
+    </label>
+    <label>Regular Expression Engine:
+      <select id="regexSelect">
+        <option value="re">re</option>
+        <option value="regex">regex</option>
+      </select>
+    </label>
+    <label><input type="checkbox" id="debugCheckbox" /> Debug</label>
+    <label><input type="checkbox" id="strictCheckbox" /> Strict</label>
+    <label>Start rule: <input type="text" id="startInput" /></label>
+
+    <hr />
+
+    <h4>Display</h4>
+    <label><input type="checkbox" id="compressCheckbox" /> Compress Tree
+      Paths</label>
+    <label><input type="checkbox" id="showHiddenCheckbox" /> Show Hidden
+      Tokens</label>
+
+    <button onclick="saveSettingsAndClose()">Save & Close</button>
+  </div>
+
+  <div id="settingsToggle" onclick="toggleSettings()" title="Settings">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round"
+      stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3" />
+      <path
+        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.09a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z">
+      </path>
+    </svg>
+  </div>
+
+  <h1>Lark IDE (Local)</h1>
+
+  <div class="split-pane">
+    <div class="editor-container" id="left-pane">
+      <div class="editor-block" id="grammar-block">
+        <h3>Grammar:</h3>
+        <textarea id="grammar"></textarea>
+      </div>
+
+      <div class="resizer-horizontal" id="vertical-divider">
+        <div class="grip-icon-horizontal"></div>
+      </div>
+
+      <div class="editor-block" id="input-block">
+        <h3>Input Text:</h3>
+        <textarea id="input"></textarea>
+      </div>
+      <div class="editor-footer">
+        <button onclick="runParser()">Parse</button>
+      </div>
+    </div>
+
+    <div class="resizer-vertical" id="column-divider">
+      <div class="grip-icon-vertical"></div>
+    </div>
+
+    <div class="output-container">
+      <h3>Parse Tree Output:</h3>
+      <pre id="output"></pre>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+  <script src="static/ide.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,306 @@
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font-family: sans-serif;
+  overflow: hidden;
+}
+
+h1 {
+  margin-left: 0.65em;
+  margin-bottom: 0px;
+}
+
+h3 {
+  margin: 10px;
+}
+
+.split-pane {
+  display: flex;
+  height: calc(100% - 6em);
+  width: 100%;
+  position: relative;
+}
+
+.resizer-vertical {
+  width: 10px;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: col-resize;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.resizer-vertical .grip-icon-vertical {
+  width: 4px;
+  height: 40px;
+  border-radius: 2px;
+  background: #aaa;
+  transition: background 0.2s;
+}
+
+.resizer-vertical:hover .grip-icon-vertical {
+  background: #666;
+}
+
+.resizer-horizontal {
+  height: 10px;
+  background: transparent;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: row-resize;
+  flex-shrink: 0;
+  flex-grow: 0;
+  position: relative;
+}
+
+.resizer-horizontal .grip-icon-horizontal {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: #aaa;
+  transition: background 0.2s;
+}
+
+.resizer-horizontal:hover .grip-icon-horizontal {
+  background: #666;
+}
+
+.editor-container {
+  display: flex;
+  flex-direction: column;
+  min-width: 300px;
+  max-width: 60%;
+  width: 50%;
+  overflow: hidden;
+  padding: 20px;
+  padding-top: 0;
+  padding-bottom: 0;
+  box-sizing: border-box;
+  height: 100%;
+}
+
+.editor-block {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-height: 50px;
+  height: calc(50% - 2em);
+}
+
+.CodeMirror {
+  flex: 1;
+  border: 1px solid #ccc;
+}
+
+#grammar-block,
+#input-block {
+  min-height: 50px;
+  overflow: hidden;
+}
+
+#grammar-block textarea,
+#input-block textarea {
+  height: 100% !important;
+}
+
+.output-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  padding-bottom: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+pre#output {
+  background: #f4f4f4;
+  padding: 10px;
+  margin: 0;
+  flex: 1;
+  font-family: monospace;
+
+  /* Updated and important for scroll behavior */
+  overflow-x: auto;
+  overflow-y: auto;
+
+  white-space: pre;
+  /* Important: keeps content from wrapping */
+  border: 1px solid #ccc;
+  max-height: 100%;
+  /* Prevent growing larger than its container */
+  box-sizing: border-box;
+}
+
+.error {
+  color: red;
+}
+
+.settings-popover {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #fff;
+  border: 1px solid #ccc;
+  padding: 10px;
+  z-index: 1000;
+  display: none;
+}
+
+.settings-popover label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.tree-label {
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+}
+
+.tree-rule {
+  font-weight: bold;
+  color: #0074d9;
+}
+
+.tree-terminal {
+  font-style: italic;
+  color: #2ecc40;
+}
+
+.tree-text {
+  display: inline;
+  font-family: monospace;
+  color: #555;
+  margin-left: 0.1em;
+}
+
+.tree-rule-separator {
+  color: #888;
+  margin: 0 0.25em;
+}
+
+.tree-hidden {
+  opacity: 0.5;
+}
+
+.collapse-toggle::before {
+  content: "▼";
+  display: inline-block;
+  width: 1em;
+  margin-left: 0.5px;
+  transition: transform 0.2s;
+  transform-origin: 30% 60%;
+  z-index: 1;
+}
+
+.collapsed>.tree-label::before {
+  transform: rotate(-90deg);
+}
+
+.tree-label:not(.collapse-toggle)::before {
+  content: "";
+}
+
+.tree-children {
+  margin-left: 0.5em;
+}
+
+.collapsed>.tree-children {
+  display: none;
+}
+
+.tree-node {
+  position: relative;
+  padding-left: 0.8em;
+}
+
+.tree-node::before {
+  content: "";
+  position: absolute;
+  top: 0.7em;
+  left: -0.2em;
+  width: 1.2em;
+  height: 0;
+  border-top: 1px solid #ccc;
+}
+
+.tree-node:not(.last-child)::after {
+  content: "";
+  position: absolute;
+  top: -0.5em;
+  height: 1.2em;
+  left: -0.2em;
+  height: 100%;
+  border-left: 1px solid #ccc;
+}
+
+.tree-node.last-child::after {
+  content: "";
+  position: absolute;
+  top: -0.5em;
+  height: 1.2em;
+  left: -0.2em;
+  border-left: 1px solid #ccc;
+}
+
+.root-node::before,
+.root-node::after {
+  content: none;
+  display: none;
+}
+
+.root-node {
+  padding-left: 0;
+}
+
+#settingsToggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 1.5em;
+  cursor: pointer;
+  z-index: 1001;
+}
+
+.CodeMirror.drag-hover {
+  border: 2px dashed #0074d9;
+  background-color: #f0faff;
+}
+
+.highlighted-text {
+  background: rgba(0, 123, 255, 0.2);
+  outline: 1px solid rgba(0, 123, 255, 0.5);
+  border-radius: 3px;
+}
+
+.highlighted-tree-node {
+  background: rgba(0, 123, 255, 0.2);
+  outline: 1px solid rgba(0, 123, 255, 0.5);
+  border-radius: 3px;
+}
+
+.selected-tree-node {
+  outline: 2px solid orange;
+  background-color: rgba(255, 165, 0, 0.2);
+}
+
+.tree-cursor {
+  width: 1px;
+  height: 1em;
+  background: black;
+  animation: blink 1s steps(2, start) infinite;
+  z-index: 10;
+  position: absolute;
+  pointer-events: none;
+}
+
+@keyframes blink {
+  to {
+    visibility: hidden;
+  }
+}
