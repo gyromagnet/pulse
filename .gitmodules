@@ -1,0 +1,6 @@
+[submodule "docs/vendor/pyodide"]
+	path = docs/vendor/pyodide
+	url = https://github.com/pyodide/pyodide.git
+[submodule "docs/vendor/codemirror"]
+	path = docs/vendor/codemirror
+	url = https://github.com/codemirror/codemirror.git
