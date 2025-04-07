@@ -3,14 +3,8 @@
 let pyodide = null;
 
 async function setupPyodide() {
-  pyodide = await loadPyodide({
-    indexURL: "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/",
-  });
+  pyodide = await loadPyodide();
   await pyodide.loadPackage("micropip");
-  await pyodide.runPythonAsync(`
-    import micropip
-    await micropip.install("lark")
-  `);
 }
 
 setupPyodide();
@@ -675,6 +669,9 @@ async function runParser() {
 
   try {
     const result = await pyodide.runPythonAsync(`
+import micropip
+await micropip.install("regex")
+await micropip.install("lark")
 from lark import Lark, Tree, Token
 import json
 
@@ -705,9 +702,9 @@ parser = Lark(
     start=${JSON.stringify(start)},
     parser=${JSON.stringify(parserType)},
     lexer=${JSON.stringify(lexer)},
-    debug=${JSON.stringify(debug)},
-    strict=${JSON.stringify(strict)},
-    regex=${JSON.stringify(regex)},
+    debug=${debug ? "True" : "False"},
+    strict=${strict ? "True" : "False"},
+    regex=${regex ? "True" : "False"},
     keep_all_tokens=True,
     propagate_positions=True,
 )

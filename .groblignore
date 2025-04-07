@@ -6,7 +6,9 @@
 .groblignore
 .pytest_cache/
 .python-version
-.venv/
+
+docs/vendor/codemirror/6.65.7/*
+docs/vendor/pyodide/0.27.1/*
 
 CODE_OF_CONDUCT.md
 CONTRIBUTING.md
