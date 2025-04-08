@@ -7,8 +7,8 @@
 .pytest_cache/
 .python-version
 
-docs/vendor/codemirror/v6.65.7/*
-docs/vendor/pyodide/v0.27.5/*
+docs/example_code/
+docs/grammars/
 
 CODE_OF_CONDUCT.md
 CONTRIBUTING.md

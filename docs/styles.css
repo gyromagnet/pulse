@@ -113,8 +113,11 @@ h3 {
   flex-direction: column;
   padding: 20px;
   padding-bottom: 0;
+  padding-top: 0;
   box-sizing: border-box;
   overflow: hidden;
+  height: 100%;
+  align-self: flex-start;
 }
 
 pre#output {
@@ -337,4 +340,71 @@ pre#output {
 
 .example-links a:hover {
   text-decoration: underline;
+}
+
+.output-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5em;
+}
+
+
+.loading-message {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 0.5em;
+  text-align: center;
+  background: #ffc;
+  font-weight: bold;
+  border-bottom: 1px solid #ccc;
+  z-index: 10000;
+}
+
+.loading-message.hidden {
+  display: none;
+}
+
+.status-bar {
+  font-size: 0.9em;
+  color: green;
+  padding: 0.25em;
+  margin-bottom: 0.5em;
+}
+
+.toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #2ecc71;
+  color: white;
+  padding: 0.75em 1em;
+  border-radius: 5px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  font-size: 0.9em;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast.error {
+  background: #e74c3c;
+}
+
+.toast.hidden {
+  display: none;
+}
+
+.highlighted-tree-node-cursor {
+  background: rgba(255, 200, 0, 0.15);
+  border-left: 3px solid orange;
 }

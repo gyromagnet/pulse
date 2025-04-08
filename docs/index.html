@@ -47,6 +47,7 @@
       Tokens</label>
 
     <button onclick="saveSettingsAndClose()">Save & Close</button>
+    <button onclick="resetWorkspace()">Reset Workspace</button>
   </div>
 
   <div id="settingsToggle" onclick="toggleSettings()" title="Settings">
@@ -58,6 +59,8 @@
       </path>
     </svg>
   </div>
+
+  <div id="pyodideStatus" class="loading-message">Loading Pyodide...</div>
 
   <h1>Pulse Program Parser</h1>
 
@@ -89,7 +92,6 @@
         <textarea id="input"></textarea>
       </div>
       <div class="editor-footer">
-        <button onclick="runParser()">Parse</button>
       </div>
     </div>
 
@@ -97,9 +99,21 @@
       <div class="grip-icon-vertical"></div>
     </div>
 
+    <div id="parseStatus" class="status-bar"></div>
     <div class="output-container">
-      <h3>Parse Tree Output:</h3>
+      <div class="output-header">
+        <h3>Parse Tree Output:</h3>
+        <div>
+          <button onclick="runParser()">Parse</button>
+        </div>
+      </div>
       <pre id="output"></pre>
+      <div class="output-footer">
+        <div>
+          <button onclick="collapseAll()">Collapse All</button>
+          <button onclick="expandAll()">Expand All</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -109,6 +123,9 @@
   <script src="ide.js"></script>
 
   <img src="img/qr.gif" alt="QR Code" class="qr-float" />
+
+  <div id="toast" class="toast hidden"></div>
+
 </body>
 
 </html>

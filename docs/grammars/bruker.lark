@@ -1,4 +1,3 @@
-start : pulseprogram
 #  PULSE PROGRAM
                                  pulseprogram : statement_sequence phase_program
 

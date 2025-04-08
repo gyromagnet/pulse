@@ -1,41 +1,59 @@
-// === ide.js (Updated to use Pyodide + Lark in-browser) ===
-
 let pyodide = null;
 
-async function setupPyodide() {
-  pyodide = await loadPyodide();
+async function installPackages(...packages) {
   await pyodide.loadPackage("micropip");
-  try {
-    await pyodide.runPythonAsync(`
-import micropip
-await micropip.install("regex")
-`);
-    console.log("✅ regex installed!");
-  } catch (err) {
-    console.error("❌ Failed to install regex:", err);
+  await pyodide.runPythonAsync("import micropip");
+  for (const pkg of packages) {
+    try {
+      await pyodide.runPythonAsync(`await micropip.install("${pkg}")`);
+      console.log(`✅ ${pkg} installed!`);
+    } catch (err) {
+      console.error(`❌ Failed to install ${pkg}:`, err);
+    }
   }
-  try {
-    await pyodide.runPythonAsync(`
-import micropip
-await micropip.install("lark")
-      `);
-    console.log("✅ lark installed!");
-  } catch (err) {
-    console.error("❌ Failed to install lark:", err);
-  }
+}
+
+async function setupPyodide() {
+  document.getElementById("pyodideStatus").textContent = "Loading Pyodide...";
+  pyodide = await loadPyodide();
+  await installPackages("regex", "lark");
+
+  const pyCode = await (await fetch("parse_runner.py")).text();
+  await pyodide.runPythonAsync(pyCode);
+
+  document.getElementById("pyodideStatus").classList.add("hidden");
+  window._pyodideReady = true;
 }
 
 setupPyodide();
 
+function resizeEditors() {
+  const containerHeight = document.querySelector(".editor-container").clientHeight;
+  const dividerHeight = divider.offsetHeight;
+  const grammarBlock = document.getElementById("grammar-block");
+  const inputBlock = document.getElementById("input-block");
 
-const grammarEditor = CodeMirror.fromTextArea(
-  document.getElementById("grammar"),
-  { lineNumbers: true, mode: "text/plain" },
-);
-const inputEditor = CodeMirror.fromTextArea(
-  document.getElementById("input"),
-  { lineNumbers: true, mode: "text/plain" },
-);
+  const grammarRatio = parseFloat(localStorage.getItem("grammarHeight")) / (parseFloat(localStorage.getItem("grammarHeight")) + parseFloat(localStorage.getItem("inputHeight"))) || 0.5;
+
+  const grammarHeight = Math.max(containerHeight * grammarRatio - dividerHeight / 2, 50);
+  const inputHeight = Math.max(containerHeight - grammarHeight - dividerHeight, 50);
+
+  grammarBlock.style.flex = `0 0 ${grammarHeight}px`;
+  inputBlock.style.flex = `0 0 ${inputHeight}px`;
+}
+window.addEventListener("resize", resizeEditors);
+
+function createEditor(textareaId, label) {
+  const cm = CodeMirror.fromTextArea(document.getElementById(textareaId), {
+    lineNumbers: true,
+    mode: "text/plain"
+  });
+  setupDragAndDrop(cm, label);
+  return cm;
+}
+
+const grammarEditor = createEditor("grammar", "Grammar");
+const inputEditor = createEditor("input", "Input");
 
 let currentHighlight = null;
 let currentTreeHighlight = null;
@@ -64,6 +82,24 @@ inputEditor.getWrapperElement().addEventListener("mouseleave", () => {
       "highlighted-tree-node",
     );
     window._hoveredTreeNode = null;
+  }
+
+  if (window._lastTreeHighlight) {
+    window._lastTreeHighlight.classList.remove("highlighted-tree-node");
+    window._lastTreeHighlight = null;
+  }
+});
+
+
+inputEditor.getWrapperElement().addEventListener("dblclick", () => {
+  const cursor = inputEditor.getCursor();
+  const index = inputEditor.indexFromPos(cursor);
+  const match = findDeepestNode(lastParseTree, index);
+
+  if (match && match._domElement) {
+    match._domElement.scrollIntoView({ behavior: "smooth", block: "center" });
+    match._domElement.classList.add("selected-tree-node");
+    setTimeout(() => match._domElement.classList.remove("selected-tree-node"), 1000);
   }
 });
 
@@ -105,6 +141,7 @@ function updateTreeCursor() {
     window._treeCursorEl = null;
   }
 
+
   if (!lastParseTree) return;
 
   const cursorPos = inputEditor.getCursor();
@@ -112,6 +149,11 @@ function updateTreeCursor() {
   const focusedNode = findDeepestNode(lastParseTree, cursorIndex);
 
   if (focusedNode && focusedNode._domElement) {
+    document
+      .querySelectorAll(".highlighted-tree-node-cursor")
+      .forEach((el) => el.classList.remove("highlighted-tree-node-cursor"));
+    focusedNode._domElement.classList.add("highlighted-tree-node-cursor");
+
     const label = focusedNode._domElement.querySelector(".tree-label");
 
     const showHidden =
@@ -189,13 +231,6 @@ inputEditor.on("cursorActivity", () => {
   }
 });
 
-inputEditor.getWrapperElement().addEventListener("mouseleave", () => {
-  if (window._lastTreeHighlight) {
-    window._lastTreeHighlight.classList.remove("highlighted-tree-node");
-    window._lastTreeHighlight = null;
-  }
-});
-
 function findDeepestNode(node, index) {
   if (node.start_pos == null || node.end_pos == null) return null;
 
@@ -254,75 +289,43 @@ function handleKeyShortcut(cm, event) {
   }
 }
 
+const settingsKeys = [
+  "parser", "lexer", "regex", "debug", "strict", "start",
+  "compress_tree", "show_hidden", "grammarHeight", "inputHeight"
+];
+
 function toggleSettings() {
   const panel = document.getElementById("settingsPanel");
-  panel.style.display =
-    panel.style.display === "block" ? "none" : "block";
+  panel.style.display = panel.style.display === "block" ? "none" : "block";
+}
+
+function saveSettings() {
+  settingsKeys.forEach(key => {
+    const el = document.getElementById(`${key}Input`) ||
+      document.getElementById(`${key}Select`) ||
+      document.getElementById(`${key}Checkbox`);
+    if (!el) return;
+    const value = el.type === "checkbox" ? el.checked : el.value;
+    localStorage.setItem(key, value);
+  });
 }
 
 function saveSettingsAndClose() {
-  localStorage.setItem(
-    "parser",
-    document.getElementById("parserSelect").value,
-  );
-  localStorage.setItem(
-    "lexer",
-    document.getElementById("lexerSelect").value,
-  );
-  localStorage.setItem(
-    "regex",
-    document.getElementById("regexSelect").value,
-  );
-  localStorage.setItem(
-    "debug",
-    document.getElementById("debugCheckbox").checked,
-  );
-  localStorage.setItem(
-    "strict",
-    document.getElementById("strictCheckbox").checked,
-  );
-  localStorage.setItem(
-    "start",
-    document.getElementById("startInput").value,
-  );
-  localStorage.setItem(
-    "compress_tree",
-    document.getElementById("compressCheckbox").checked,
-  );
-  localStorage.setItem(
-    "show_hidden",
-    document.getElementById("showHiddenCheckbox").checked,
-  );
-
-  const grammarBlock = document.getElementById("grammar-block");
-  const inputBlock = document.getElementById("input-block");
-  const grammarHeight = grammarBlock.getBoundingClientRect().height;
-  const inputHeight = inputBlock.getBoundingClientRect().height;
-
-  localStorage.setItem("grammarHeight", grammarHeight);
-  localStorage.setItem("inputHeight", inputHeight);
-
+  saveSettings();
   toggleSettings();
   rerenderLastTree();
 }
 
 function loadSettings() {
-  document.getElementById("parserSelect").value =
-    localStorage.getItem("parser") || "earley";
-  document.getElementById("lexerSelect").value =
-    localStorage.getItem("lexer") || "dynamic";
-  document.getElementById("regexSelect").value =
-    localStorage.getItem("regex") || "regex";
-  document.getElementById("debugCheckbox").checked =
-    localStorage.getItem("debug") === "true";
-  document.getElementById("strictCheckbox").checked =
-    localStorage.getItem("strict") === "true";
-  document.getElementById("compressCheckbox").checked =
-    localStorage.getItem("compress_tree") === "true";
-  document.getElementById("showHiddenCheckbox").checked =
-    localStorage.getItem("show_hidden") === "true";
-  document.getElementById("startInput").value =
-    localStorage.getItem("start") || "pulseprogram";
+  settingsKeys.forEach(key => {
+    const el = document.getElementById(`${key}Input`) ||
+      document.getElementById(`${key}Select`) ||
+      document.getElementById(`${key}Checkbox`);
+    if (!el) return;
+    const value = localStorage.getItem(key);
+    if (el.type === "checkbox") el.checked = value === "true";
+    else if (value !== null) el.value = value;
+  });
 
   const grammarBlock = document.getElementById("grammar-block");
   const inputBlock = document.getElementById("input-block");
@@ -659,7 +662,16 @@ function renderTree(node, depth = 0, isLast = true, showHidden = false) {
       labelRow.appendChild(label);
     }
 
+
+    value.addEventListener("dblclick", () => {
+      if (startPos != null) {
+        const pos = inputEditor.posFromIndex(startPos);
+        inputEditor.setCursor(pos);
+        inputEditor.scrollIntoView(pos, 100);
+      }
+    });
     labelRow.appendChild(value);
+
     wrapper.appendChild(labelRow);
   } else if (node.type === "rule") {
     const label = document.createElement("span");
@@ -672,7 +684,43 @@ function renderTree(node, depth = 0, isLast = true, showHidden = false) {
   return wrapper;
 }
 
+function showToast(message, type = "success", duration = 3000) {
+  const toast = document.getElementById("toast");
+  toast.textContent = message;
+  toast.className = `toast show ${type}`;
+
+  // Make it visible
+  toast.classList.remove("hidden");
+
+  // Hide it after a while
+  setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => {
+      toast.classList.add("hidden");
+    }, 300); // Wait for fade-out transition
+  }, duration);
+}
+
+let _lastGrammar = "";
+let _lastInput = "";
+
+function hasContentChanged() {
+  const currentGrammar = grammarEditor.getValue();
+  const currentInput = inputEditor.getValue();
+  return currentGrammar !== _lastGrammar || currentInput !== _lastInput;
+}
+
 async function runParser() {
+  if (!window._pyodideReady) {
+    showToast("⏳ Pyodide is still loading, please wait...", "error");
+    return;
+  }
+
+  if (!hasContentChanged()) {
+    console.log("No changes detected. Skipping parse.");
+    return;
+  }
+
   const grammar = grammarEditor.getValue();
   const text = inputEditor.getValue();
   const start = document.getElementById("startInput").value || "start";
@@ -686,57 +734,34 @@ async function runParser() {
   output.textContent = "Parsing...";
 
   try {
+
     const result = await pyodide.runPythonAsync(`
+      parse_input(
+          ${JSON.stringify(grammar)},
+          ${JSON.stringify(text)},
+          ${JSON.stringify(start)},
+          ${JSON.stringify(parserType)},
+          ${JSON.stringify(lexer)},
+          ${debug ? "True" : "False"},
+          ${strict ? "True" : "False"},
+          ${regex ? "True" : "False"}
+      )
+  `);
 
-import micropip
-await micropip.install("regex")
-await micropip.install("lark")
-from lark import Lark, Tree, Token
-import json
-
-def tree_to_dict(node):
-    if isinstance(node, Tree):
-        children = [tree_to_dict(c) for c in node.children]
-        child_start = [c["start_pos"] for c in children if c.get("start_pos") is not None]
-        child_end = [c["end_pos"] for c in children if c.get("end_pos") is not None]
-        return {
-            "type": "rule",
-            "name": node.data,
-            "children": children,
-            "start_pos": min(child_start) if child_start else None,
-            "end_pos": max(child_end) if child_end else None
-        }
-    elif isinstance(node, Token):
-        return {
-            "type": "token",
-            "name": node.type,
-            "value": node.value,
-            "hidden": node.type.startswith("_"),
-            "start_pos": getattr(node, "start_pos", None),
-            "end_pos": getattr(node, "end_pos", None),
-        }
-
-parser = Lark(
-    grammar=${JSON.stringify(grammar)},
-    start=${JSON.stringify(start)},
-    parser=${JSON.stringify(parserType)},
-    lexer=${JSON.stringify(lexer)},
-    debug=${debug ? "True" : "False"},
-    strict=${strict ? "True" : "False"},
-    regex=${regex ? "True" : "False"},
-    keep_all_tokens=True,
-    propagate_positions=True,
-)
-
-tree = parser.parse(${JSON.stringify(text)})
-json.dumps(tree_to_dict(tree))
-`);
 
     lastParseTree = JSON.parse(result);
+
+    showToast("✅ Parse complete", "success");
+
+
+    _lastGrammar = grammar;
+    _lastInput = text;
     renderAndDisplayTree(lastParseTree);
   } catch (e) {
     output.className = "error";
     output.textContent = e.message || e;
+    showToast("❌ Parsing failed", "error");
+
   }
 }
 
@@ -767,4 +792,24 @@ function loadGrammarFile(path) {
     .catch(err => {
       alert("Could not load grammar: " + err.message);
     });
+}
+
+function collapseAll() {
+  document.querySelectorAll(".tree-node").forEach(node => {
+    node.classList.add("collapsed");
+  });
+}
+
+function expandAll() {
+  document.querySelectorAll(".tree-node").forEach(node => {
+    node.classList.remove("collapsed");
+  });
+}
+
+function resetWorkspace() {
+  localStorage.clear();
+  grammarEditor.setValue("");
+  inputEditor.setValue("");
+  showToast("Workspace has been reset. Reloading...");
+  setTimeout(() => location.reload(), 1500);
 }
