@@ -2,8 +2,9 @@ import micropip
 
 await micropip.install("regex")
 await micropip.install("lark")
-from lark import Lark, Tree, Token
 import json
+
+from lark import Lark, Token, Tree
 
 
 def tree_to_dict(node):
@@ -18,7 +19,7 @@ def tree_to_dict(node):
             "start_pos": min(child_start) if child_start else None,
             "end_pos": max(child_end) if child_end else None,
         }
-    elif isinstance(node, Token):
+    if isinstance(node, Token):
         return {
             "type": "token",
             "name": node.type,
@@ -27,10 +28,11 @@ def tree_to_dict(node):
             "start_pos": getattr(node, "start_pos", None),
             "end_pos": getattr(node, "end_pos", None),
         }
+    return None
 
 
 def parse_input(grammar, text, start, parser, lexer, debug, strict, regex):
-    parser = Lark(
+    parser_instance = Lark(
         grammar,
         start=start,
         parser=parser,
@@ -41,5 +43,5 @@ def parse_input(grammar, text, start, parser, lexer, debug, strict, regex):
         keep_all_tokens=True,
         propagate_positions=True,
     )
-    tree = parser.parse(text)
+    tree = parser_instance.parse(text)
     return json.dumps(tree_to_dict(tree))

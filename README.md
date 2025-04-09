@@ -1,6 +1,6 @@
 # Pulse Program Parser Demo
 
-This is a web-based tool that leverages [Pyodide](https://pyodide.org/) to parse Bruker pulse code using [Lark](https://github.com/lark-parser/lark) as its parsing engine. It provides an interactive interface to visualize parse trees and inspect how the input code is tokenized and structured.
+This is a web‐based tool that leverages [Pyodide](https://pyodide.org/) to parse Bruker pulse code using [Lark](https://github.com/lark-parser/lark) as its parsing engine. It provides an interactive interface to visualize parse trees and inspect how the input code is tokenized and structured.
 
 ## Features
 
@@ -19,7 +19,7 @@ This is a web-based tool that leverages [Pyodide](https://pyodide.org/) to parse
 - **User Interface Enhancements:**
 
   - Add a progress bar to indicate parsing activity.
-  - Introduce a help panel next to the settings menu, including context-sensitive help text.
+  - Introduce a help panel next to the settings menu, including context‐sensitive help text.
   - Display help content automatically the first time the page is opened.
   - Implement smooth transitions across user interface interactions, especially cursor movement in the parse tree.
 

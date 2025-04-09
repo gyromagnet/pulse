@@ -15,6 +15,7 @@ h3 {
   margin: 10px;
 }
 
+/* Layout for split-pane editors and output */
 .split-pane {
   display: flex;
   height: calc(100% - 6em);
@@ -22,6 +23,7 @@ h3 {
   position: relative;
 }
 
+/* Vertical Resizer */
 .resizer-vertical {
   width: 10px;
   background: transparent;
@@ -45,6 +47,7 @@ h3 {
   background: #666;
 }
 
+/* Horizontal Resizer */
 .resizer-horizontal {
   height: 10px;
   background: transparent;
@@ -69,6 +72,7 @@ h3 {
   background: #666;
 }
 
+/* Editor Container */
 .editor-container {
   display: flex;
   flex-direction: column;
@@ -107,6 +111,7 @@ h3 {
   height: 100% !important;
 }
 
+/* Output Area */
 .output-container {
   flex: 1;
   display: flex;
@@ -126,16 +131,11 @@ pre#output {
   margin: 0;
   flex: 1;
   font-family: monospace;
-
-  /* Updated and important for scroll behavior */
   overflow-x: auto;
   overflow-y: auto;
-
   white-space: pre;
-  /* Important: keeps content from wrapping */
   border: 1px solid #ccc;
   max-height: 100%;
-  /* Prevent growing larger than its container */
   box-sizing: border-box;
 }
 
@@ -143,6 +143,7 @@ pre#output {
   color: red;
 }
 
+/* Settings and Tree Styles */
 .settings-popover {
   position: absolute;
   top: 10px;
@@ -236,9 +237,8 @@ pre#output {
   content: "";
   position: absolute;
   top: -0.5em;
-  height: 1.2em;
-  left: -0.2em;
   height: 100%;
+  left: -0.2em;
   border-left: 1px solid #ccc;
 }
 
@@ -261,6 +261,7 @@ pre#output {
   padding-left: 0;
 }
 
+/* Settings Toggle */
 #settingsToggle {
   position: absolute;
   top: 10px;
@@ -270,11 +271,13 @@ pre#output {
   z-index: 1001;
 }
 
+/* Drag Hover Styles */
 .CodeMirror.drag-hover {
   border: 2px dashed #0074d9;
   background-color: #f0faff;
 }
 
+/* Highlighting */
 .highlighted-text {
   background: rgba(0, 123, 255, 0.2);
   outline: 1px solid rgba(0, 123, 255, 0.5);
@@ -299,7 +302,9 @@ pre#output {
   animation: blink 1s steps(2, start) infinite;
   z-index: 10;
   position: absolute;
+  /* position: relative; */
   pointer-events: none;
+  transition: all 0.3s ease;
 }
 
 @keyframes blink {
@@ -308,6 +313,7 @@ pre#output {
   }
 }
 
+/* QR Code Float */
 .qr-float {
   position: fixed;
   bottom: 20px;
@@ -323,6 +329,7 @@ pre#output {
   opacity: 1;
 }
 
+/* Editor Header and Examples */
 .editor-header {
   display: flex;
   justify-content: space-between;
@@ -349,7 +356,7 @@ pre#output {
   margin-bottom: 0.5em;
 }
 
-
+/* Loading and Status Messages */
 .loading-message {
   position: absolute;
   top: 0;
@@ -387,7 +394,9 @@ pre#output {
   font-size: 0.9em;
   opacity: 0;
   transform: translateY(20px);
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
   pointer-events: none;
 }
 
@@ -407,4 +416,8 @@ pre#output {
 .highlighted-tree-node-cursor {
   background: rgba(255, 200, 0, 0.15);
   border-left: 3px solid orange;
+}
+
+.hidden-token {
+  opacity: 0.3;
 }

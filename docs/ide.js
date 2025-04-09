@@ -1,815 +1,772 @@
-let pyodide = null;
-
-async function installPackages(...packages) {
-  await pyodide.loadPackage("micropip");
-  await pyodide.runPythonAsync("import micropip");
-  for (const pkg of packages) {
-    try {
-      await pyodide.runPythonAsync(`await micropip.install("${pkg}")`);
-      console.log(`✅ ${pkg} installed!`);
-    } catch (err) {
-      console.error(`❌ Failed to install ${pkg}:`, err);
-    }
-  }
-}
-
-async function setupPyodide() {
-  document.getElementById("pyodideStatus").textContent = "Loading Pyodide...";
-  pyodide = await loadPyodide();
-  await installPackages("regex", "lark");
-
-  const pyCode = await (await fetch("parse_runner.py")).text();
-  await pyodide.runPythonAsync(pyCode);
-
-  document.getElementById("pyodideStatus").classList.add("hidden");
-  window._pyodideReady = true;
-}
-
-setupPyodide();
-
-function resizeEditors() {
-  const containerHeight = document.querySelector(".editor-container").clientHeight;
-  const dividerHeight = divider.offsetHeight;
-  const grammarBlock = document.getElementById("grammar-block");
-  const inputBlock = document.getElementById("input-block");
-
-  const grammarRatio = parseFloat(localStorage.getItem("grammarHeight")) / (parseFloat(localStorage.getItem("grammarHeight")) + parseFloat(localStorage.getItem("inputHeight"))) || 0.5;
-
-  const grammarHeight = Math.max(containerHeight * grammarRatio - dividerHeight / 2, 50);
-  const inputHeight = Math.max(containerHeight - grammarHeight - dividerHeight, 50);
-
-  grammarBlock.style.flex = `0 0 ${grammarHeight}px`;
-  inputBlock.style.flex = `0 0 ${inputHeight}px`;
-}
-window.addEventListener("resize", resizeEditors);
-
-function createEditor(textareaId, label) {
-  const cm = CodeMirror.fromTextArea(document.getElementById(textareaId), {
-    lineNumbers: true,
-    mode: "text/plain"
-  });
-  setupDragAndDrop(cm, label);
-  return cm;
-}
-
-const grammarEditor = createEditor("grammar", "Grammar");
-const inputEditor = createEditor("input", "Input");
-
-let currentHighlight = null;
-let currentTreeHighlight = null;
-let lastParseTree = null;
-
-window._treeCursorEl = null;
-
-grammarEditor.on("keydown", handleKeyShortcut);
-inputEditor.on("keydown", handleKeyShortcut);
-
-inputEditor.getWrapperElement().addEventListener("mousemove", (event) => {
-  if (!window._treeNodeList || window._treeNodeList.length === 0) return;
-
-  const pos = inputEditor.coordsChar(
-    { left: event.clientX, top: event.clientY },
-    "window",
-  );
-  const index = inputEditor.indexFromPos(pos);
-
-  highlightTreeNodeFromInput(index);
-});
-
-inputEditor.getWrapperElement().addEventListener("mouseleave", () => {
-  if (window._hoveredTreeNode && window._hoveredTreeNode._domElement) {
-    window._hoveredTreeNode._domElement.classList.remove(
-      "highlighted-tree-node",
-    );
-    window._hoveredTreeNode = null;
-  }
-
-  if (window._lastTreeHighlight) {
-    window._lastTreeHighlight.classList.remove("highlighted-tree-node");
-    window._lastTreeHighlight = null;
-  }
-});
-
-
-inputEditor.getWrapperElement().addEventListener("dblclick", () => {
-  const cursor = inputEditor.getCursor();
-  const index = inputEditor.indexFromPos(cursor);
-  const match = findDeepestNode(lastParseTree, index);
-
-  if (match && match._domElement) {
-    match._domElement.scrollIntoView({ behavior: "smooth", block: "center" });
-    match._domElement.classList.add("selected-tree-node");
-    setTimeout(() => match._domElement.classList.remove("selected-tree-node"), 1000);
-  }
-});
-
-function debounce(fn, delay) {
-  let timeout;
-  return function (...args) {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => fn.apply(this, args), delay);
-  };
-}
-
-function isFullyContained(node, fromIdx, toIdx) {
-  return (
-    node.start_pos != null &&
-    node.end_pos != null &&
-    node.start_pos >= fromIdx &&
-    node.end_pos <= toIdx
-  );
-}
-
-function allChildrenContained(node, fromIdx, toIdx) {
-  if (!node.children || node.children.length === 0) return true;
-
-  for (const child of node.children) {
-    if (!isFullyContained(child, fromIdx, toIdx)) {
-      return false;
-    }
-    if (!allChildrenContained(child, fromIdx, toIdx)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-function updateTreeCursor() {
-  if (window._treeCursorEl) {
-    window._treeCursorEl.remove();
-    window._treeCursorEl = null;
-  }
-
-
-  if (!lastParseTree) return;
-
-  const cursorPos = inputEditor.getCursor();
-  const cursorIndex = inputEditor.indexFromPos(cursorPos);
-  const focusedNode = findDeepestNode(lastParseTree, cursorIndex);
-
-  if (focusedNode && focusedNode._domElement) {
-    document
-      .querySelectorAll(".highlighted-tree-node-cursor")
-      .forEach((el) => el.classList.remove("highlighted-tree-node-cursor"));
-    focusedNode._domElement.classList.add("highlighted-tree-node-cursor");
-
-    const label = focusedNode._domElement.querySelector(".tree-label");
-
-    const showHidden =
-      document.getElementById("showHiddenCheckbox").checked;
-    if (
-      focusedNode.type === "token" &&
-      (showHidden || !focusedNode.hidden)
-    ) {
-      const tokenTextEl =
-        focusedNode._domElement.querySelector(".tree-text");
-      if (!tokenTextEl) return;
-
-      const offset = cursorIndex - focusedNode.start_pos;
-      const safeOffset = Math.max(
-        0,
-        Math.min(offset, focusedNode.value.length),
-      );
-
-      const cursorEl = document.createElement("span");
-      cursorEl.className = "tree-cursor";
-
-      const before = document.createTextNode(
-        `"${focusedNode.value.slice(0, safeOffset).replace(/\n$/, "⮐")}`,
-      );
-      const after = document.createTextNode(
-        `${focusedNode.value.slice(safeOffset).replace(/\n$/, "⮐")}"`,
-      );
-
-      tokenTextEl.innerHTML = "";
-      tokenTextEl.append(before, cursorEl, after);
-
-      window._treeCursorEl = cursorEl;
-    } else if (label) {
-      const cursorEl = document.createElement("span");
-      cursorEl.className = "tree-cursor";
-      label.appendChild(cursorEl);
-      window._treeCursorEl = cursorEl;
-    }
-  }
-}
-
-const debouncedUpdateTreeCursor = debounce(updateTreeCursor, 80); // ~80ms is a good balance
-
-inputEditor.on("cursorActivity", () => {
-  // Clear previous highlights
-  document
-    .querySelectorAll(".selected-tree-node")
-    .forEach((el) => el.classList.remove("selected-tree-node"));
-
-  debouncedUpdateTreeCursor();
-
-  const sel = inputEditor.listSelections()[0];
-  if (!sel || sel.empty() || !window._treeNodeList) return;
-
-  const fromIdx = inputEditor.indexFromPos(sel.from());
-  const toIdx = inputEditor.indexFromPos(sel.to());
-
-  // Normalize selection range
-  const startIdx = Math.min(fromIdx, toIdx);
-  const endIdx = Math.max(fromIdx, toIdx);
-
-  for (const node of window._treeNodeList) {
-    const s = node.start_pos;
-    const e = node.end_pos;
-
-    if (
-      s != null &&
-      e != null &&
-      node._domElement &&
-      s >= startIdx &&
-      e <= endIdx
-    ) {
-      node._domElement.classList.add("selected-tree-node");
-    }
-  }
-});
-
-function findDeepestNode(node, index) {
-  if (node.start_pos == null || node.end_pos == null) return null;
-
-  if (index < node.start_pos || index >= node.end_pos) return null;
-
-  let bestMatch = node;
-
-  if (node.children) {
-    for (const child of node.children) {
-      const match = findDeepestNode(child, index);
-      if (match) bestMatch = match;
-    }
-  }
-  return bestMatch;
-}
-
-function highlightTreeNodeFromInput(index) {
-  if (!lastParseTree) {
-    return;
-  }
-
-  const match = findDeepestNode(lastParseTree, index);
-
-  if (!match || !match._domElement) {
-    return;
-  }
-
-  if (window._lastTreeHighlight) {
-    window._lastTreeHighlight.classList.remove("highlighted-tree-node");
-  }
-
-  match._domElement.classList.add("highlighted-tree-node");
-  window._lastTreeHighlight = match._domElement;
-}
-
-// Highlight helper
-function highlightRange(start, end) {
-  if (currentHighlight) {
-    currentHighlight.clear();
-    currentHighlight = null;
-  }
-
-  if (!isNaN(start) && !isNaN(end)) {
-    const from = inputEditor.posFromIndex(start);
-    const to = inputEditor.posFromIndex(end);
-    currentHighlight = inputEditor.markText(from, to, {
-      className: "highlighted-text",
-    });
-  }
-}
-
-function handleKeyShortcut(cm, event) {
-  if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-    runParser();
-    event.preventDefault();
-  }
-}
-
-const settingsKeys = [
-  "parser", "lexer", "regex", "debug", "strict", "start",
-  "compress_tree", "show_hidden", "grammarHeight", "inputHeight"
-];
-
-function toggleSettings() {
-  const panel = document.getElementById("settingsPanel");
-  panel.style.display = panel.style.display === "block" ? "none" : "block";
-}
-
-function saveSettings() {
-  settingsKeys.forEach(key => {
-    const el = document.getElementById(`${key}Input`) ||
-      document.getElementById(`${key}Select`) ||
-      document.getElementById(`${key}Checkbox`);
-    if (!el) return;
-    const value = el.type === "checkbox" ? el.checked : el.value;
-    localStorage.setItem(key, value);
-  });
-}
-
-function saveSettingsAndClose() {
-  saveSettings();
-  toggleSettings();
-  rerenderLastTree();
-}
-
-function loadSettings() {
-  settingsKeys.forEach(key => {
-    const el = document.getElementById(`${key}Input`) ||
-      document.getElementById(`${key}Select`) ||
-      document.getElementById(`${key}Checkbox`);
-    if (!el) return;
-    const value = localStorage.getItem(key);
-    if (el.type === "checkbox") el.checked = value === "true";
-    else if (value !== null) el.value = value;
-  });
-
-  const grammarBlock = document.getElementById("grammar-block");
-  const inputBlock = document.getElementById("input-block");
-  const savedGrammarHeight = localStorage.getItem("grammarHeight");
-  const savedInputHeight = localStorage.getItem("inputHeight");
-
-  if (savedGrammarHeight && savedInputHeight) {
-    grammarBlock.style.flex = `0 0 ${savedGrammarHeight}px`;
-    inputBlock.style.flex = `0 0 ${savedInputHeight}px`;
-  }
-}
-
-function rerenderLastTree() {
-  if (lastParseTree) {
-    renderAndDisplayTree(lastParseTree);
-  }
-}
-
-function saveToLocalStorage() {
-  localStorage.setItem("lark_grammar", grammarEditor.getValue());
-  localStorage.setItem("lark_input", inputEditor.getValue());
-}
-
-function loadFromLocalStorage() {
-  const savedGrammar = localStorage.getItem("lark_grammar");
-  const savedInput = localStorage.getItem("lark_input");
-  if (savedGrammar) grammarEditor.setValue(savedGrammar);
-  if (savedInput) inputEditor.setValue(savedInput);
-  loadSettings();
-}
-
-grammarEditor.on("change", saveToLocalStorage);
-inputEditor.on("change", saveToLocalStorage);
-window.addEventListener("load", loadFromLocalStorage);
-
-function setupDragAndDrop(cm, label) {
-  const wrapper = cm.getWrapperElement();
-
-  wrapper.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    wrapper.classList.add("drag-hover");
-  });
-
-  wrapper.addEventListener("dragleave", () => {
-    wrapper.classList.remove("drag-hover");
-  });
-
-  wrapper.addEventListener("drop", (e) => {
-    e.preventDefault();
-    wrapper.classList.remove("drag-hover");
-
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith("text")) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        cm.setValue(event.target.result);
+(function () {
+  // --- Utility Module ---
+  const Utils = {
+    debounce: function (fn, delay) {
+      let timeout;
+      return function (...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => fn.apply(this, args), delay);
       };
-      reader.readAsText(file);
-    } else {
-      alert(`Only text files can be dropped into the ${label} editor.`);
-    }
-  });
-}
-
-setupDragAndDrop(grammarEditor, "Grammar");
-setupDragAndDrop(inputEditor, "Input");
-
-const grammarBlock = document.getElementById("grammar-block");
-const inputBlock = document.getElementById("input-block");
-const divider = document.getElementById("vertical-divider");
-
-let isResizingVert = false;
-
-divider.addEventListener("mousedown", (e) => {
-  e.preventDefault();
-  isResizingVert = true;
-  document.body.style.cursor = "row-resize";
-});
-
-document.addEventListener("mousemove", (e) => {
-  if (!isResizingVert) return;
-
-  const container = grammarBlock.parentElement;
-  const containerTop = container.getBoundingClientRect().top;
-  const containerHeight = container.clientHeight;
-
-  const offset = e.clientY - containerTop;
-  const dividerHeight = divider.offsetHeight;
-
-  const minHeight = 50;
-  const grammarHeight = Math.max(offset - dividerHeight / 2, minHeight);
-  const inputHeight = Math.max(
-    containerHeight - grammarHeight - dividerHeight,
-    minHeight,
-  );
-
-  grammarBlock.style.flex = `0 0 ${grammarHeight}px`;
-  inputBlock.style.flex = `0 0 ${inputHeight}px`;
-});
-
-document.addEventListener("mouseup", () => {
-  if (isResizingVert) {
-    document.body.style.cursor = "default";
-    isResizingVert = false;
-  }
-});
-
-const leftPane = document.getElementById("left-pane");
-const resizer = document.getElementById("column-divider");
-const container = document.querySelector(".split-pane");
-
-let isDragging = false;
-
-resizer.addEventListener("mousedown", (e) => {
-  e.preventDefault();
-  isDragging = true;
-  document.body.style.cursor = "col-resize";
-});
-
-document.addEventListener("mousemove", (e) => {
-  if (!isDragging) return;
-
-  const containerRect = container.getBoundingClientRect();
-  const offsetLeft = e.clientX - containerRect.left;
-  const minWidth = 200;
-  const maxWidth = containerRect.width - minWidth;
-
-  const newWidth = Math.min(Math.max(offsetLeft, minWidth), maxWidth);
-  leftPane.style.width = `${newWidth}px`;
-});
-
-document.addEventListener("mouseup", () => {
-  isDragging = false;
-  document.body.style.cursor = "default";
-});
-
-function compressTree(node) {
-  if (node.type !== "rule") return node;
-
-  let nameChain = [node.name];
-  let current = node;
-
-  // Walk down the compression path
-  while (
-    current.children &&
-    current.children.length === 1 &&
-    current.children[0].type === "rule"
-  ) {
-    current = current.children[0];
-    nameChain.push(current.name);
-  }
-
-  // Recursively compress children
-  const compressedChildren = current.children.map(compressTree);
-
-  // Compute min start and max end from all children
-  const childStartPositions = compressedChildren
-    .map((c) => c.start_pos)
-    .filter((p) => p != null);
-  const childEndPositions = compressedChildren
-    .map((c) => c.end_pos)
-    .filter((p) => p != null);
-
-  const start_pos = Math.min(
-    ...childStartPositions,
-    node.start_pos ?? Infinity,
-  );
-  const end_pos = Math.max(...childEndPositions, current.end_pos ?? -1);
-
-  return {
-    type: "rule",
-    name: nameChain.join(" > "),
-    children: compressedChildren,
-    start_pos,
-    end_pos,
+    },
   };
-}
 
-function collectTreeNodes(node) {
-  if (
-    node &&
-    node.start_pos != null &&
-    node.end_pos != null &&
-    node._domElement
-  ) {
-    window._treeNodeList.push(node);
+  // --- Helper Function for Token Formatting ---
+  function formatTokenValue(value) {
+    // If the token value only contains whitespace, replace all newline characters with the return symbol.
+    if (value.trim() === "") {
+      return value.replace(/\n/g, "↵");
+    }
+    // Otherwise, return the original value unchanged.
+    return value;
   }
 
-  if (node.children) {
-    for (const child of node.children) {
-      collectTreeNodes(child);
-    }
-  }
-}
+  // --- Pyodide Module ---
+  const PyodideModule = {
+    pyodide: null,
+    isReady: false,
+  };
 
-function renderAndDisplayTree(tree) {
-  if (window._lastTreeHighlight) {
-    window._lastTreeHighlight.classList.remove("highlighted-tree-node");
-    window._lastTreeHighlight = null;
-  }
-  document
-    .querySelectorAll(".selected-tree-node")
-    .forEach((el) => el.classList.remove("selected-tree-node"));
-
-  const compress = document.getElementById("compressCheckbox").checked;
-  const showHidden =
-    document.getElementById("showHiddenCheckbox").checked;
-
-  const treeData = compress ? compressTree(tree) : tree;
-  const output = document.getElementById("output");
-
-  output.className = "";
-  output.innerHTML = "";
-
-  const treeRoot = renderTree(treeData, 0, true, showHidden);
-
-  treeRoot.classList.add("root-node");
-  output.appendChild(treeRoot);
-
-  window._treeNodeList = [];
-  collectTreeNodes(treeData);
-}
-
-function renderTree(node, depth = 0, isLast = true, showHidden = false) {
-  const wrapper = document.createElement("div");
-  wrapper.className = `tree-node ${isLast ? "last-child" : ""}`;
-
-  // Attach position directly to wrapper from this specific node
-  const startPos = node.start_pos ?? null;
-  const endPos = node.end_pos ?? null;
-
-  const from = inputEditor.posFromIndex(startPos);
-  const to = inputEditor.posFromIndex(endPos);
-
-  // Store these on wrapper as properties, not dataset
-  wrapper._startPos = startPos;
-  wrapper._endPos = endPos;
-
-  node._domElement = wrapper; // link data ↔ dom
-
-  const labelRow = document.createElement("div");
-  labelRow.className = "tree-label";
-
-  // ========== Highlight on wrapper ==========
-
-  wrapper.addEventListener("mouseenter", (e) => {
-    e.stopPropagation();
-    const start = Number(wrapper._startPos);
-    const end = Number(wrapper._endPos);
-    highlightRange(start, end);
-  });
-
-  wrapper.addEventListener("mouseleave", (e) => {
-    if (currentHighlight) {
-      currentHighlight.clear();
-      currentHighlight = null;
-    }
-  });
-
-  labelRow.addEventListener("mouseenter", (e) => {
-    e.stopPropagation();
-    const start = Number(wrapper._startPos);
-    const end = Number(wrapper._endPos);
-    highlightRange(start, end);
-  });
-
-  labelRow.addEventListener("mouseleave", (e) => {
-    if (currentHighlight) {
-      currentHighlight.clear();
-      currentHighlight = null;
-    }
-  });
-
-  // ========== Now build the label ==========
-
-  const isBranch =
-    node.type === "rule" && node.children && node.children.length > 0;
-
-  if (isBranch) {
-    labelRow.classList.add("collapse-toggle");
-
-    const label = document.createElement("span");
-    label.className = "tree-rule";
-
-    const parts = node.name.split(" > ");
-    parts.forEach((part, i) => {
-      const span = document.createElement("span");
-      span.textContent = part;
-      label.appendChild(span);
-      if (i < parts.length - 1) {
-        const sep = document.createElement("span");
-        sep.textContent = ">";
-        sep.className = "tree-rule-separator";
-        label.appendChild(sep);
-      }
-    });
-
-    labelRow.appendChild(label);
-    wrapper.appendChild(labelRow);
-
-    const childrenContainer = document.createElement("div");
-    childrenContainer.className = "tree-children";
-
-    node.children.forEach((child, index) => {
-      const childIsLast = index === node.children.length - 1;
-      childrenContainer.appendChild(
-        renderTree(child, depth + 1, childIsLast, showHidden),
+  // --- Editor Module ---
+  const EditorModule = {
+    grammarEditor: null,
+    inputEditor: null,
+    initEditors: function () {
+      this.grammarEditor = CodeMirror.fromTextArea(
+        document.getElementById("grammar"),
+        { lineNumbers: true, mode: "text/plain" }
       );
-    });
+      this.inputEditor = CodeMirror.fromTextArea(
+        document.getElementById("input"),
+        { lineNumbers: true, mode: "text/plain" }
+      );
+      this.setupDragAndDrop(this.grammarEditor, "Grammar");
+      this.setupDragAndDrop(this.inputEditor, "Input");
 
-    wrapper.appendChild(childrenContainer);
+      // Event listeners for key shortcuts and cursor/mouse events
+      this.grammarEditor.on("keydown", UI.handleKeyShortcut);
+      this.inputEditor.on("keydown", UI.handleKeyShortcut);
+      this.inputEditor.getWrapperElement().addEventListener(
+        "mousemove",
+        UI.handleMouseMoveOnInput
+      );
+      this.inputEditor.getWrapperElement().addEventListener(
+        "mouseleave",
+        UI.handleMouseLeaveOnInput
+      );
+      this.inputEditor.getWrapperElement().addEventListener(
+        "dblclick",
+        UI.handleDoubleClickOnInput
+      );
+      this.inputEditor.on("cursorActivity", UI.handleCursorActivity);
 
-    labelRow.addEventListener("click", (e) => {
-      e.stopPropagation();
-      wrapper.classList.toggle("collapsed");
-    });
-  } else if (node.type === "token") {
-    const label = document.createElement("span");
-    label.className = "tree-terminal";
+      // Save changes to local storage
+      this.grammarEditor.on("change", SettingsModule.saveToLocalStorage);
+      this.inputEditor.on("change", SettingsModule.saveToLocalStorage);
+    },
+    setupDragAndDrop: function (cm, label) {
+      const wrapper = cm.getWrapperElement();
+      wrapper.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        wrapper.classList.add("drag-hover");
+      });
+      wrapper.addEventListener("dragleave", () => {
+        wrapper.classList.remove("drag-hover");
+      });
+      wrapper.addEventListener("drop", (e) => {
+        e.preventDefault();
+        wrapper.classList.remove("drag-hover");
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith("text")) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            cm.setValue(event.target.result);
+          };
+          reader.readAsText(file);
+        } else {
+          alert("Only text files can be dropped into the " + label + " editor.");
+        }
+      });
+    },
+    resizeEditors: function () {
+      const containerHeight = document.querySelector(".editor-container").clientHeight;
+      const divider = document.getElementById("vertical-divider"); // Fix: get the divider element
+      const dividerHeight = divider.offsetHeight;
+      const grammarBlock = document.getElementById("grammar-block");
+      const inputBlock = document.getElementById("input-block");
 
-    const value = document.createElement("span");
-    value.className = "tree-text";
-    value.textContent = ` "${node.value.replace(/\n$/, "⮐")}"`;
+      const savedGrammarHeight = localStorage.getItem("grammarHeight");
+      const savedInputHeight = localStorage.getItem("inputHeight");
+      let grammarRatio =
+        parseFloat(savedGrammarHeight) /
+        (parseFloat(savedGrammarHeight) + parseFloat(savedInputHeight)) || 0.5;
 
-    if (node.hidden && !node.name.startsWith("__ANON")) {
-      label.classList.add("tree-hidden");
-      value.classList.add("tree-hidden");
-    }
+      const grammarHeight = Math.max(containerHeight * grammarRatio - dividerHeight / 2, 50);
+      const inputHeight = Math.max(containerHeight - grammarHeight - dividerHeight, 50);
 
-    if (node.name.startsWith("__ANON")) {
-      value.textContent = ` "${node.value.replace(/\n$/, "↵")}"`;
-    } else {
-      label.textContent = `${node.name}:`;
-      labelRow.appendChild(label);
-    }
+      grammarBlock.style.flex = "0 0 " + grammarHeight + "px";
+      inputBlock.style.flex = "0 0 " + inputHeight + "px";
+    },
+  };
 
+  // --- Tree Module ---
+  const TreeModule = {
+    lastParseTree: null,
+    treeNodeList: [],
+    renderAndDisplayTree: function (tree) {
+      // Clear previous highlights
+      document
+        .querySelectorAll(".selected-tree-node")
+        .forEach((el) => el.classList.remove("selected-tree-node"));
 
-    value.addEventListener("dblclick", () => {
-      if (startPos != null) {
-        const pos = inputEditor.posFromIndex(startPos);
-        inputEditor.setCursor(pos);
-        inputEditor.scrollIntoView(pos, 100);
+      const compress = document.getElementById("compressCheckbox").checked;
+      const showHidden = document.getElementById("showHiddenCheckbox").checked;
+      const treeData = compress ? this.compressTree(tree) : tree;
+      const output = document.getElementById("output");
+      output.className = "";
+      output.innerHTML = "";
+
+      const treeRoot = this.renderTree(treeData, 0, true, showHidden);
+      treeRoot.classList.add("root-node");
+      output.appendChild(treeRoot);
+
+      this.treeNodeList = [];
+      this.collectTreeNodes(treeData);
+    },
+    compressTree: function (node) {
+      if (node.type !== "rule") return node;
+      let nameChain = [node.name];
+      let current = node;
+
+      while (
+        current.children &&
+        current.children.length === 1 &&
+        current.children[0].type === "rule"
+      ) {
+        current = current.children[0];
+        nameChain.push(current.name);
       }
-    });
-    labelRow.appendChild(value);
 
-    wrapper.appendChild(labelRow);
-  } else if (node.type === "rule") {
-    const label = document.createElement("span");
-    label.className = "tree-rule";
-    label.textContent = node.name;
-    labelRow.appendChild(label);
-    wrapper.appendChild(labelRow);
+      const compressedChildren = current.children.map(this.compressTree.bind(this));
+      const childStart = compressedChildren.map((c) => c.start_pos).filter((p) => p != null);
+      const childEnd = compressedChildren.map((c) => c.end_pos).filter((p) => p != null);
+      const start_pos = Math.min(...childStart, node.start_pos ?? Infinity);
+      const end_pos = Math.max(...childEnd, current.end_pos ?? -1);
+
+      return {
+        type: "rule",
+        name: nameChain.join(" > "),
+        children: compressedChildren,
+        start_pos,
+        end_pos,
+      };
+    },
+    collectTreeNodes: function (node) {
+      if (
+        node &&
+        node.start_pos != null &&
+        node.end_pos != null &&
+        node._domElement
+      ) {
+        this.treeNodeList.push(node);
+      }
+      if (node.children) {
+        node.children.forEach((child) => this.collectTreeNodes(child));
+      }
+    },
+    renderTree: function (node, depth = 0, isLast = true, showHidden = false) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "tree-node " + (isLast ? "last-child" : "");
+      const startPos = node.start_pos ?? null;
+      const endPos = node.end_pos ?? null;
+
+      // Attach positions to the element.
+      wrapper._startPos = startPos;
+      wrapper._endPos = endPos;
+      node._domElement = wrapper;
+
+      const labelRow = document.createElement("div");
+      labelRow.className = "tree-label";
+
+      // Attach event listeners for highlighting.
+      wrapper.addEventListener("mouseenter", (e) => {
+        e.stopPropagation();
+        UI.highlightRange(startPos, endPos);
+      });
+      wrapper.addEventListener("mouseleave", (e) => {
+        UI.clearHighlight();
+      });
+      labelRow.addEventListener("mouseenter", (e) => {
+        e.stopPropagation();
+        UI.highlightRange(startPos, endPos);
+      });
+      labelRow.addEventListener("mouseleave", (e) => {
+        UI.clearHighlight();
+      });
+
+      if (node.type === "rule" && node.children && node.children.length > 0) {
+        // (keep your rule node rendering as before)
+        labelRow.classList.add("collapse-toggle");
+
+        const label = document.createElement("span");
+        label.className = "tree-rule";
+        const parts = node.name.split(" > ");
+        parts.forEach((part, i) => {
+          const span = document.createElement("span");
+          span.textContent = part;
+          label.appendChild(span);
+          if (i < parts.length - 1) {
+            const sep = document.createElement("span");
+            sep.textContent = ">";
+            sep.className = "tree-rule-separator";
+            label.appendChild(sep);
+          }
+        });
+        labelRow.appendChild(label);
+        wrapper.appendChild(labelRow);
+
+        const childrenContainer = document.createElement("div");
+        childrenContainer.className = "tree-children";
+        node.children.forEach((child, index) => {
+          const childIsLast = index === node.children.length - 1;
+          childrenContainer.appendChild(this.renderTree(child, depth + 1, childIsLast, showHidden));
+        });
+        wrapper.appendChild(childrenContainer);
+
+        labelRow.addEventListener("click", (e) => {
+          e.stopPropagation();
+          wrapper.classList.toggle("collapsed");
+        });
+      }
+
+      else if (node.type === "token") {
+        // Always render the token node so that it can be highlighted if the cursor falls inside.
+        const tokenWrapper = document.createElement("span");
+        tokenWrapper.className = "tree-token";
+        // Add a class for hidden tokens if the setting is off.
+        if (node.hidden && !showHidden) {
+          tokenWrapper.classList.add("hidden-token");
+        }
+
+        // Create the terminal label if the token is not anonymous.
+        if (!node.name.startsWith("__ANON")) {
+          const label = document.createElement("span");
+          label.className = "tree-terminal";
+          label.textContent = `${node.name}:`;
+          tokenWrapper.appendChild(label);
+        }
+
+        // Create the token value with quotes.
+        const value = document.createElement("span");
+        value.className = "tree-text";
+        // Use your helper function to format the token value.
+        value.textContent = ` "${formatTokenValue(node.value)}"`;
+
+        // When double-clicking the token value, jump the pulse code to its start.
+        value.addEventListener("dblclick", () => {
+          if (node.start_pos != null) {
+            const pos = EditorModule.inputEditor.posFromIndex(node.start_pos);
+            EditorModule.inputEditor.setCursor(pos);
+            EditorModule.inputEditor.scrollIntoView(pos, 100);
+          }
+        });
+        tokenWrapper.appendChild(value);
+        labelRow.appendChild(tokenWrapper);
+        wrapper.appendChild(labelRow);
+
+      } else if (node.type === "rule") {
+        // (handle rule nodes without children, if needed)
+        const label = document.createElement("span");
+        label.className = "tree-rule";
+        label.textContent = node.name;
+        labelRow.appendChild(label);
+        wrapper.appendChild(labelRow);
+      }
+      return wrapper;
+    },
+  };
+
+  // --- UI Module ---
+  const UI = {
+    currentHighlight: null,
+    lastTreeHighlight: null,
+    treeCursorEl: null,
+    handleKeyShortcut: function (cm, event) {
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+        App.runParser();
+        event.preventDefault();
+      }
+    },
+    handleMouseMoveOnInput: function (event) {
+      if (!TreeModule.treeNodeList || TreeModule.treeNodeList.length === 0) return;
+      const pos = EditorModule.inputEditor.coordsChar(
+        { left: event.clientX, top: event.clientY },
+        "window"
+      );
+      const index = EditorModule.inputEditor.indexFromPos(pos);
+      UI.highlightTreeNodeFromInput(index);
+    },
+    handleMouseLeaveOnInput: function () {
+      if (UI.hoveredTreeNode && UI.hoveredTreeNode._domElement) {
+        UI.hoveredTreeNode._domElement.classList.remove("highlighted-tree-node");
+        UI.hoveredTreeNode = null;
+      }
+      if (UI.lastTreeHighlight) {
+        UI.lastTreeHighlight.classList.remove("highlighted-tree-node");
+        UI.lastTreeHighlight = null;
+      }
+    },
+    handleDoubleClickOnInput: function () {
+      const cursor = EditorModule.inputEditor.getCursor();
+      const index = EditorModule.inputEditor.indexFromPos(cursor);
+      const match = UI.findDeepestNode(TreeModule.lastParseTree, index);
+      if (match && match._domElement) {
+        // Scroll the focused node into view and highlight it
+        match._domElement.scrollIntoView({ behavior: "smooth", block: "center" });
+        match._domElement.classList.add("selected-tree-node");
+        setTimeout(() => match._domElement.classList.remove("selected-tree-node"), 1000);
+      }
+    },
+    handleCursorActivity: function () {
+      document.querySelectorAll(".selected-tree-node").forEach((el) =>
+        el.classList.remove("selected-tree-node")
+      );
+
+      // Debounce updating the tree cursor for smoother performance.
+      Utils.debounce(UI.updateTreeCursor, 80)();
+
+      // Scroll the currently selected node into view (centered)
+      const selectedNode = document.querySelector(".selected-tree-node");
+      if (selectedNode) {
+        selectedNode.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+
+      const sel = EditorModule.inputEditor.listSelections()[0];
+      if (!sel || sel.empty() || !TreeModule.treeNodeList) return;
+      const fromIdx = EditorModule.inputEditor.indexFromPos(sel.from());
+      const toIdx = EditorModule.inputEditor.indexFromPos(sel.to());
+      const startIdx = Math.min(fromIdx, toIdx);
+      const endIdx = Math.max(fromIdx, toIdx);
+      TreeModule.treeNodeList.forEach((node) => {
+        if (
+          node.start_pos != null &&
+          node.end_pos != null &&
+          node._domElement &&
+          node.start_pos >= startIdx &&
+          node.end_pos <= endIdx
+        ) {
+          node._domElement.classList.add("selected-tree-node");
+          // Scroll each selected node into view (centered)
+          node._domElement.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      });
+    },
+    updateTreeCursor: function () {
+      if (UI.treeCursorEl) {
+        UI.treeCursorEl.remove();
+        UI.treeCursorEl = null;
+      }
+      if (!TreeModule.lastParseTree) return;
+
+      const cursorPos = EditorModule.inputEditor.getCursor();
+      const cursorIndex = EditorModule.inputEditor.indexFromPos(cursorPos);
+      const focusedNode = UI.findDeepestNode(TreeModule.lastParseTree, cursorIndex);
+
+      if (focusedNode && focusedNode._domElement) {
+        document
+          .querySelectorAll(".highlighted-tree-node-cursor")
+          .forEach((el) => el.classList.remove("highlighted-tree-node-cursor"));
+        focusedNode._domElement.classList.add("highlighted-tree-node-cursor");
+
+        const label = focusedNode._domElement.querySelector(".tree-label");
+        const showHidden = document.getElementById("showHiddenCheckbox").checked;
+        if (
+          focusedNode.type === "token" &&
+          (showHidden || !focusedNode.hidden)
+        ) {
+          const tokenTextEl =
+            focusedNode._domElement.querySelector(".tree-text");
+          if (!tokenTextEl) return;
+
+          const offset = cursorIndex - focusedNode.start_pos;
+          const safeOffset = Math.max(
+            0,
+            Math.min(offset, focusedNode.value.length)
+          );
+
+          const formatted = formatTokenValue(focusedNode.value);
+          const beforeText = formatted.slice(0, safeOffset);
+          const afterText = formatted.slice(safeOffset);
+
+          // Always add quotes explicitly
+          const openingQuote = '"';
+          const closingQuote = '"';
+
+          const beforeNode = document.createTextNode(openingQuote + beforeText);
+          const afterNode = document.createTextNode(afterText + closingQuote);
+
+          const cursorEl = document.createElement("span");
+          cursorEl.className = "tree-cursor";
+
+          // Clear the token text element and append the new nodes
+          tokenTextEl.innerHTML = "";
+          tokenTextEl.append(beforeNode, cursorEl, afterNode);
+          UI.treeCursorEl = cursorEl;
+        } else if (label) {
+          const cursorEl = document.createElement("span");
+          cursorEl.className = "tree-cursor";
+          label.appendChild(cursorEl);
+          UI.treeCursorEl = cursorEl;
+        }
+        // SCROLL: Ensure the focused tree node is in view (centered) with smooth animation.
+        focusedNode._domElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    },
+    highlightTreeNodeFromInput: function (index) {
+      if (!TreeModule.lastParseTree) return;
+      const match = UI.findDeepestNode(TreeModule.lastParseTree, index);
+      if (!match || !match._domElement) return;
+      if (UI.lastTreeHighlight) {
+        UI.lastTreeHighlight.classList.remove("highlighted-tree-node");
+      }
+      match._domElement.classList.add("highlighted-tree-node");
+      UI.lastTreeHighlight = match._domElement;
+    },
+    findDeepestNode: function (node, index) {
+      if (node.start_pos == null || node.end_pos == null) return null;
+      if (index < node.start_pos || index >= node.end_pos) return null;
+      let bestMatch = node;
+      if (node.children) {
+        node.children.forEach((child) => {
+          const match = UI.findDeepestNode(child, index);
+          if (match) bestMatch = match;
+        });
+      }
+      return bestMatch;
+    },
+    highlightRange: function (start, end) {
+      if (UI.currentHighlight) {
+        UI.currentHighlight.clear();
+        UI.currentHighlight = null;
+      }
+      if (!isNaN(start) && !isNaN(end)) {
+        const from = EditorModule.inputEditor.posFromIndex(start);
+        const to = EditorModule.inputEditor.posFromIndex(end);
+        UI.currentHighlight = EditorModule.inputEditor.markText(from, to, {
+          className: "highlighted-text",
+        });
+      }
+    },
+    clearHighlight: function () {
+      if (UI.currentHighlight) {
+        UI.currentHighlight.clear();
+        UI.currentHighlight = null;
+      }
+    },
+    showToast: function (message, type = "success", duration = 3000) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.className = "toast show " + type;
+      toast.classList.remove("hidden");
+      setTimeout(() => {
+        toast.classList.remove("show");
+        setTimeout(() => {
+          toast.classList.add("hidden");
+        }, 300);
+      }, duration);
+    },
+    toggleSettings: function () {
+      const panel = document.getElementById("settingsPanel");
+      panel.style.display = panel.style.display === "block" ? "none" : "block";
+    },
+  };
+
+  // --- Settings Module ---
+  const SettingsModule = {
+    settingsKeys: [
+      "parser",
+      "lexer",
+      "regex",
+      "debug",
+      "strict",
+      "start",
+      "compress_tree",
+      "show_hidden",
+      "grammarHeight",
+      "inputHeight",
+    ],
+    saveSettings: function () {
+      this.settingsKeys.forEach((key) => {
+        const el =
+          document.getElementById(key + "Input") ||
+          document.getElementById(key + "Select") ||
+          document.getElementById(key + "Checkbox");
+        if (!el) return;
+        const value = el.type === "checkbox" ? el.checked : el.value;
+        localStorage.setItem(key, value);
+      });
+    },
+    saveSettingsAndClose: function () {
+      this.saveSettings();
+      UI.toggleSettings();
+      if (TreeModule.lastParseTree) {
+        TreeModule.renderAndDisplayTree(TreeModule.lastParseTree);
+      }
+    },
+    loadSettings: function () {
+      this.settingsKeys.forEach((key) => {
+        const el =
+          document.getElementById(key + "Input") ||
+          document.getElementById(key + "Select") ||
+          document.getElementById(key + "Checkbox");
+        if (!el) return;
+        const value = localStorage.getItem(key);
+        if (el.type === "checkbox") el.checked = value === "true";
+        else if (value !== null) el.value = value;
+      });
+
+      const grammarBlock = document.getElementById("grammar-block");
+      const inputBlock = document.getElementById("input-block");
+      const savedGrammarHeight = localStorage.getItem("grammarHeight");
+      const savedInputHeight = localStorage.getItem("inputHeight");
+      if (savedGrammarHeight && savedInputHeight) {
+        grammarBlock.style.flex = "0 0 " + savedGrammarHeight + "px";
+        inputBlock.style.flex = "0 0 " + savedInputHeight + "px";
+      }
+    },
+    saveToLocalStorage: function () {
+      localStorage.setItem("lark_grammar", EditorModule.grammarEditor.getValue());
+      localStorage.setItem("lark_input", EditorModule.inputEditor.getValue());
+    },
+    loadFromLocalStorage: function () {
+      const savedGrammar = localStorage.getItem("lark_grammar");
+      const savedInput = localStorage.getItem("lark_input");
+      if (savedGrammar) EditorModule.grammarEditor.setValue(savedGrammar);
+      if (savedInput) EditorModule.inputEditor.setValue(savedInput);
+      this.loadSettings();
+    },
+    resetWorkspace: function () {
+      localStorage.clear();
+      EditorModule.grammarEditor.setValue("");
+      EditorModule.inputEditor.setValue("");
+      UI.showToast("Workspace has been reset. Reloading...", "success");
+      setTimeout(() => location.reload(), 1500);
+    },
+    toggleSettings: function () {
+      UI.toggleSettings();
+    },
+  };
+
+  // --- Main Application ---
+  const App = {
+    runParser: async function () {
+      if (!PyodideModule.isReady) {
+        UI.showToast("⏳ Pyodide is still loading, please wait...", "error");
+        return;
+      }
+      if (!App.hasContentChanged()) {
+        console.log("No changes detected. Skipping parse.");
+        return;
+      }
+      const grammar = EditorModule.grammarEditor.getValue();
+      const text = EditorModule.inputEditor.getValue();
+      const start = document.getElementById("startInput").value || "start";
+      const parserType = document.getElementById("parserSelect").value;
+      const lexer = document.getElementById("lexerSelect").value;
+      const debug = document.getElementById("debugCheckbox").checked;
+      const strict = document.getElementById("strictCheckbox").checked;
+      const regex = document.getElementById("regexSelect").value === "regex";
+      const output = document.getElementById("output");
+      output.textContent = "Parsing...";
+
+      try {
+        const pyCode = `
+parse_input(
+    ${JSON.stringify(grammar)},
+    ${JSON.stringify(text)},
+    ${JSON.stringify(start)},
+    ${JSON.stringify(parserType)},
+    ${JSON.stringify(lexer)},
+    ${debug ? "True" : "False"},
+    ${strict ? "True" : "False"},
+    ${regex ? "True" : "False"}
+)
+        `;
+        const result = await PyodideModule.pyodide.runPythonAsync(pyCode);
+        TreeModule.lastParseTree = JSON.parse(result);
+        UI.showToast("✅ Parse complete", "success");
+        _lastGrammar = grammar;
+        _lastInput = text;
+        TreeModule.renderAndDisplayTree(TreeModule.lastParseTree);
+      } catch (e) {
+        output.className = "error";
+        output.textContent = e.message || e;
+        UI.showToast("❌ Parsing failed", "error");
+      }
+    },
+    hasContentChanged: function () {
+      const currentGrammar = EditorModule.grammarEditor.getValue();
+      const currentInput = EditorModule.inputEditor.getValue();
+      return currentGrammar !== _lastGrammar || currentInput !== _lastInput;
+    },
+    initialize: async function () {
+      EditorModule.initEditors();
+      window.addEventListener("resize", EditorModule.resizeEditors);
+
+      // Call the resize function once after initialization.
+      EditorModule.resizeEditors();
+
+      // Set up vertical resizer for editors
+      const grammarBlock = document.getElementById("grammar-block");
+      const inputBlock = document.getElementById("input-block");
+      const divider = document.getElementById("vertical-divider");
+      let isResizingVert = false;
+      divider.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        isResizingVert = true;
+        document.body.style.cursor = "row-resize";
+      });
+      document.addEventListener("mousemove", (e) => {
+        if (!isResizingVert) return;
+        const container = grammarBlock.parentElement;
+        const containerTop = container.getBoundingClientRect().top;
+        const containerHeight = container.clientHeight;
+        const offset = e.clientY - containerTop;
+        const dividerHeight = divider.offsetHeight;
+        const minHeight = 50;
+        const grammarHeight = Math.max(offset - dividerHeight / 2, minHeight);
+        const inputHeight = Math.max(containerHeight - grammarHeight - dividerHeight, minHeight);
+        grammarBlock.style.flex = "0 0 " + grammarHeight + "px";
+        inputBlock.style.flex = "0 0 " + inputHeight + "px";
+      });
+      document.addEventListener("mouseup", () => {
+        document.body.style.cursor = "default";
+        isResizingVert = false;
+      });
+
+      // Set up horizontal column resizer
+      const leftPane = document.getElementById("left-pane");
+      const resizer = document.getElementById("column-divider");
+      const container = document.querySelector(".split-pane");
+      let isDragging = false;
+      resizer.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        isDragging = true;
+        document.body.style.cursor = "col-resize";
+      });
+      document.addEventListener("mousemove", (e) => {
+        if (!isDragging) return;
+        const containerRect = container.getBoundingClientRect();
+        const offsetLeft = e.clientX - containerRect.left;
+        const minWidth = 200;
+        const maxWidth = containerRect.width - minWidth;
+        const newWidth = Math.min(Math.max(offsetLeft, minWidth), maxWidth);
+        leftPane.style.width = newWidth + "px";
+      });
+      document.addEventListener("mouseup", () => {
+        isDragging = false;
+        document.body.style.cursor = "default";
+      });
+
+      // Settings toggle
+      document.getElementById("settingsToggle").addEventListener("click", () => {
+        SettingsModule.toggleSettings();
+      });
+
+      // Expose file loading functions globally
+      window.loadExampleFile = function (path) {
+        fetch(path)
+          .then((response) => {
+            if (!response.ok)
+              throw new Error(`Failed to load ${path}`);
+            return response.text();
+          })
+          .then((data) => {
+            EditorModule.inputEditor.setValue(data);
+          })
+          .catch((err) => {
+            alert("Could not load example: " + err.message);
+          });
+      };
+      window.loadGrammarFile = function (path) {
+        fetch(path)
+          .then((response) => {
+            if (!response.ok)
+              throw new Error(`Failed to load ${path}`);
+            return response.text();
+          })
+          .then((data) => {
+            EditorModule.grammarEditor.setValue(data);
+          })
+          .catch((err) => {
+            alert("Could not load grammar: " + err.message);
+          });
+      };
+      window.collapseAll = function () {
+        document.querySelectorAll(".tree-node").forEach((node) => {
+          node.classList.add("collapsed");
+        });
+      };
+      window.expandAll = function () {
+        document.querySelectorAll(".tree-node").forEach((node) => {
+          node.classList.remove("collapsed");
+        });
+      };
+      window.resetWorkspace = function () {
+        SettingsModule.resetWorkspace();
+      };
+
+      SettingsModule.loadFromLocalStorage();
+    },
+  };
+
+  // --- Private state ---
+  let _lastGrammar = "";
+  let _lastInput = "";
+
+  // Expose App for external use
+  window.App = App;
+  window.SettingsModule = SettingsModule;
+
+  // --- Initialization with Error Handlers ---
+  async function init() {
+    document.getElementById("pyodideStatus").textContent = "Loading Pyodide...";
+    try {
+      PyodideModule.pyodide = await loadPyodide();
+      await PyodideModule.pyodide.loadPackage("micropip");
+      await PyodideModule.pyodide.runPythonAsync("import micropip");
+      await PyodideModule.pyodide.runPythonAsync("await micropip.install('regex')");
+      await PyodideModule.pyodide.runPythonAsync("await micropip.install('lark')");
+    } catch (e) {
+      handleLoadError("Failed to load Pyodide. Please refresh or try again later.");
+      return;
+    }
+    try {
+      const pyCode = await (await fetch("parse_runner.py")).text();
+      await PyodideModule.pyodide.runPythonAsync(pyCode);
+      document.getElementById("pyodideStatus").classList.add("hidden");
+      PyodideModule.isReady = true;
+      await App.initialize();
+    } catch (e) {
+      handleLoadError("Pyodide initialized but failed setting up the parser.");
+      return;
+    }
   }
+  init();
 
-  return wrapper;
-}
+  // --- Global Error Handler for Script Load Failures ---
+  window.handleLoadError = function (message) {
+    const errorDiv = document.createElement("div");
+    errorDiv.style.position = "fixed";
+    errorDiv.style.top = "0";
+    errorDiv.style.left = "0";
+    errorDiv.style.right = "0";
+    errorDiv.style.padding = "1em";
+    errorDiv.style.background = "red";
+    errorDiv.style.color = "white";
+    errorDiv.style.zIndex = "10000";
+    errorDiv.textContent = message;
+    document.body.appendChild(errorDiv);
+  };
 
-function showToast(message, type = "success", duration = 3000) {
-  const toast = document.getElementById("toast");
-  toast.textContent = message;
-  toast.className = `toast show ${type}`;
+})();
 
-  // Make it visible
-  toast.classList.remove("hidden");
-
-  // Hide it after a while
-  setTimeout(() => {
-    toast.classList.remove("show");
-    setTimeout(() => {
-      toast.classList.add("hidden");
-    }, 300); // Wait for fade-out transition
-  }, duration);
-}
-
-let _lastGrammar = "";
-let _lastInput = "";
-
-function hasContentChanged() {
-  const currentGrammar = grammarEditor.getValue();
-  const currentInput = inputEditor.getValue();
-  return currentGrammar !== _lastGrammar || currentInput !== _lastInput;
-}
-
-async function runParser() {
-  if (!window._pyodideReady) {
-    showToast("⏳ Pyodide is still loading, please wait...", "error");
-    return;
-  }
-
-  if (!hasContentChanged()) {
-    console.log("No changes detected. Skipping parse.");
-    return;
-  }
-
-  const grammar = grammarEditor.getValue();
-  const text = inputEditor.getValue();
-  const start = document.getElementById("startInput").value || "start";
-  const parserType = document.getElementById("parserSelect").value;
-  const lexer = document.getElementById("lexerSelect").value;
-  const debug = document.getElementById("debugCheckbox").checked;
-  const strict = document.getElementById("strictCheckbox").checked;
-  const regex = document.getElementById("regexSelect").value === "regex";
-
-  const output = document.getElementById("output");
-  output.textContent = "Parsing...";
-
-  try {
-
-    const result = await pyodide.runPythonAsync(`
-      parse_input(
-          ${JSON.stringify(grammar)},
-          ${JSON.stringify(text)},
-          ${JSON.stringify(start)},
-          ${JSON.stringify(parserType)},
-          ${JSON.stringify(lexer)},
-          ${debug ? "True" : "False"},
-          ${strict ? "True" : "False"},
-          ${regex ? "True" : "False"}
-      )
-  `);
-
-
-    lastParseTree = JSON.parse(result);
-
-    showToast("✅ Parse complete", "success");
-
-
-    _lastGrammar = grammar;
-    _lastInput = text;
-    renderAndDisplayTree(lastParseTree);
-  } catch (e) {
-    output.className = "error";
-    output.textContent = e.message || e;
-    showToast("❌ Parsing failed", "error");
-
-  }
-}
-
-
-function loadExampleFile(path) {
-  fetch(path)
-    .then(response => {
-      if (!response.ok) throw new Error(`Failed to load ${path}`);
-      return response.text();
-    })
-    .then(data => {
-      inputEditor.setValue(data);
-    })
-    .catch(err => {
-      alert("Could not load example: " + err.message);
-    });
-}
-
-function loadGrammarFile(path) {
-  fetch(path)
-    .then(response => {
-      if (!response.ok) throw new Error(`Failed to load ${path}`);
-      return response.text();
-    })
-    .then(data => {
-      grammarEditor.setValue(data);
-    })
-    .catch(err => {
-      alert("Could not load grammar: " + err.message);
-    });
-}
-
-function collapseAll() {
-  document.querySelectorAll(".tree-node").forEach(node => {
-    node.classList.add("collapsed");
-  });
-}
-
-function expandAll() {
-  document.querySelectorAll(".tree-node").forEach(node => {
-    node.classList.remove("collapsed");
-  });
-}
-
-function resetWorkspace() {
-  localStorage.clear();
-  grammarEditor.setValue("");
-  inputEditor.setValue("");
-  showToast("Workspace has been reset. Reloading...");
-  setTimeout(() => location.reload(), 1500);
-}

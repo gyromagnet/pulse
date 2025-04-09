@@ -4,11 +4,21 @@
 <head>
   <meta charset="UTF-8" />
   <title>Pulse Program Parser</title>
-  <script src="https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.js"></script>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+  <link rel="preload" href="styles.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript>
+    <link rel="stylesheet" href="styles.css">
+  </noscript>
+
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.js"
+    onerror="handleLoadError('Failed to load. Please check your network connection.')"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css"
     integrity="sha512-uf06llspW44/LZpHzHT6qBOIVODjWtv4MxCricRxkzvopAlSWnTf6hpZTFxuuZcuNE9CBQhqE0Seu1CoRk84nQ=="
     crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <link rel="stylesheet" href="styles.css" />
+
+
+
 </head>
 
 <body>
@@ -45,23 +55,33 @@
       Paths</label>
     <label><input type="checkbox" id="showHiddenCheckbox" /> Show Hidden
       Tokens</label>
-
-    <button onclick="saveSettingsAndClose()">Save & Close</button>
+    <button onclick="SettingsModule.saveSettingsAndClose()">
+      Save & Close
+    </button>
     <button onclick="resetWorkspace()">Reset Workspace</button>
   </div>
 
-  <div id="settingsToggle" onclick="toggleSettings()" title="Settings">
+  <div id="settingsToggle" title="Settings">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round"
       stroke-linejoin="round">
       <circle cx="12" cy="12" r="3" />
-      <path
-        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.09a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z">
-      </path>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83
+              2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33
+              1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65
+              1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2
+              2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0
+              .33-1.82v-.09a1.65 1.65 0 0 0 1.51-1H3a2 2 0 1 1 0-4h.09a1.65
+              1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2
+              2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0
+              1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0
+              1 1.51h.09a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0
+              1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33
+              1.82v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65
+              1.65 0 0 0-1.51 1z"></path>
     </svg>
   </div>
 
   <div id="pyodideStatus" class="loading-message">Loading Pyodide...</div>
-
   <h1>Pulse Program Parser</h1>
 
   <div class="split-pane">
@@ -81,7 +101,6 @@
       </div>
 
       <div class="editor-block" id="input-block">
-
         <div class="editor-header">
           <h3>Pulse Code</h3>
           <div class="example-links">
@@ -91,8 +110,7 @@
         </div>
         <textarea id="input"></textarea>
       </div>
-      <div class="editor-footer">
-      </div>
+      <div class="editor-footer"></div>
     </div>
 
     <div class="resizer-vertical" id="column-divider">
@@ -104,7 +122,7 @@
       <div class="output-header">
         <h3>Parse Tree Output:</h3>
         <div>
-          <button onclick="runParser()">Parse</button>
+          <button onclick="App.runParser()">Parse</button>
         </div>
       </div>
       <pre id="output"></pre>
@@ -119,13 +137,12 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js"
     integrity="sha512-8RnEqURPUc5aqFEN04aQEiPlSAdE0jlFS/9iGgUyNtwFnSKCXhmB6ZTNl7LnDtDWKabJIASzXrzD0K+LYexU9g=="
-    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    crossorigin="anonymous" referrerpolicy="no-referrer"
+    onerror="handleLoadError('Failed to load. Please check your network connection.')"></script>
+
   <script src="ide.js"></script>
-
   <img src="img/qr.gif" alt="QR Code" class="qr-float" />
-
   <div id="toast" class="toast hidden"></div>
-
 </body>
 
 </html>
