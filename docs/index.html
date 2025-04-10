@@ -11,6 +11,22 @@
     <link rel="stylesheet" href="styles.css">
   </noscript>
 
+  <script>
+    window.handleLoadError = function (message) {
+      const errorDiv = document.createElement("div");
+      errorDiv.style.position = "fixed";
+      errorDiv.style.top = "0";
+      errorDiv.style.left = "0";
+      errorDiv.style.right = "0";
+      errorDiv.style.padding = "1em";
+      errorDiv.style.background = "red";
+      errorDiv.style.color = "white";
+      errorDiv.style.zIndex = "10000";
+      errorDiv.textContent = message;
+      document.body.appendChild(errorDiv);
+    };
+  </script>
+
   <script src="https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.js"
     onerror="handleLoadError('Failed to load. Please check your network connection.')"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css"
@@ -22,63 +38,13 @@
 </head>
 
 <body>
-  <div class="settings-popover" id="settingsPanel">
-    <h4>Parser</h4>
-    <label>Parser:
-      <select id="parserSelect">
-        <option value="lalr">LALR</option>
-        <option value="earley">Earley</option>
-      </select>
-    </label>
-    <label>Lexer:
-      <select id="lexerSelect">
-        <option value="basic">basic</option>
-        <option value="contextual">contextual</option>
-        <option value="dynamic">dynamic</option>
-        <option value="dynamic_complete">dynamic_complete</option>
-      </select>
-    </label>
-    <label>Regular Expression Engine:
-      <select id="regexSelect">
-        <option value="re">re</option>
-        <option value="regex">regex</option>
-      </select>
-    </label>
-    <label><input type="checkbox" id="debugCheckbox" /> Debug</label>
-    <label><input type="checkbox" id="strictCheckbox" /> Strict</label>
-    <label>Start rule: <input type="text" id="startInput" /></label>
-
-    <hr />
-
-    <h4>Display</h4>
-    <label><input type="checkbox" id="compressCheckbox" /> Compress Tree
-      Paths</label>
-    <label><input type="checkbox" id="showHiddenCheckbox" /> Show Hidden
-      Tokens</label>
-    <button onclick="SettingsModule.saveSettingsAndClose()">
-      Save & Close
-    </button>
-    <button onclick="resetWorkspace()">Reset Workspace</button>
-  </div>
-
-  <div id="settingsToggle" title="Settings">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round"
-      stroke-linejoin="round">
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83
-              2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33
-              1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65
-              1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2
-              2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0
-              .33-1.82v-.09a1.65 1.65 0 0 0 1.51-1H3a2 2 0 1 1 0-4h.09a1.65
-              1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2
-              2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0
-              1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0
-              1 1.51h.09a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0
-              1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33
-              1.82v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65
-              1.65 0 0 0-1.51 1z"></path>
-    </svg>
+  <div class="icon-group">
+    <div id="helpToggle" title="Help">
+      <img src="icons/help.svg" alt="Help" width="20" height="20" />
+    </div>
+    <div id="settingsToggle" title="Settings">
+      <img src="icons/settings.svg" alt="Settings" width="20" height="20" />
+    </div>
   </div>
 
   <div id="pyodideStatus" class="loading-message">Loading Pyodide...</div>
@@ -143,6 +109,92 @@
   <script src="ide.js"></script>
   <img src="img/qr.gif" alt="QR Code" class="qr-float" />
   <div id="toast" class="toast hidden"></div>
+
+  <div class="popover" id="settingsPopover">
+    <h3>Settings</h3>
+
+    <label><input type="checkbox" id="enableAdvancedCheckbox" /> Enable Advanced Settings</label>
+
+    <div id="advancedSettings" style="display: none;">
+      <h4>Parser</h4>
+      <label>Parser:
+        <select id="parserSelect">
+          <option value="lalr">LALR</option>
+          <option value="earley">Earley</option>
+        </select>
+      </label>
+      <label>Lexer:
+        <select id="lexerSelect">
+          <option value="basic">basic</option>
+          <option value="contextual">contextual</option>
+          <option value="dynamic">dynamic</option>
+          <option value="dynamic_complete">dynamic_complete</option>
+        </select>
+      </label>
+      <label>Regular Expression Engine:
+        <select id="regexSelect">
+          <option value="re">re</option>
+          <option value="regex">regex</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="debugCheckbox" /> Debug</label>
+      <label><input type="checkbox" id="strictCheckbox" /> Strict</label>
+      <label>Start rule: <input type="text" id="startInput" /></label>
+      <hr />
+    </div>
+
+    <h4>Display</h4>
+    <label><input type="checkbox" id="compressCheckbox" /> Compress Tree Paths</label>
+    <label><input type="checkbox" id="showHiddenCheckbox" /> Show Hidden Tokens</label>
+    <button onclick="resetWorkspace()">Reset Workspace</button>
+  </div>
+
+  <div class="popover" id="helpPopover">
+    <h3>Help & Instructions</h3>
+    <p>This tool allows you to edit a grammar and corresponding input, then visualize the parse tree in real time.</p>
+
+    <h4><img src="icons/edit.svg" alt="Settings" width="20" height="20" /> Editing</h4>
+    <ul>
+      <li><strong>Grammar</strong>: Write or paste your Lark grammar here.</li>
+      <li><strong>Pulse Code</strong>: Your input source to parse using the grammar.</li>
+      <li>Drag and drop text files into either editor to quickly load them.</li>
+    </ul>
+
+    <h4><img src="icons/parsing.svg" alt="Settings" width="20" height="20" /> Parsing</h4>
+    <ul>
+      <li><strong>Run parser</strong>: Press <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>Enter</kbd> or click "Parse".</li>
+      <li>Parsing options (parser type, lexer mode, etc.) are in the <em>Settings</em> panel.</li>
+      <li>Error messages are shown inline if parsing fails.</li>
+    </ul>
+
+    <h4><img src="icons/tree.svg" alt="Settings" width="20" height="20" /> Parse Tree Interaction</h4>
+    <ul>
+      <li>Tree nodes are interactive — click to expand/collapse rules.</li>
+      <li>Double-click on:
+        <ul>
+          <li><strong>Input</strong>: Jumps to and highlights corresponding node in the tree.</li>
+          <li><strong>Tree</strong>: Jumps to and highlights corresponding text in input.</li>
+        </ul>
+      </li>
+      <li><strong>Hover</strong>: Highlights matching tokens or rules in both views.</li>
+      <li><strong>Selecting text</strong> in the input highlights all matching tree nodes.</li>
+      <li><strong>Collapse All</strong> / <strong>Expand All</strong>: Use bottons below parse tree to quickly
+        fold/unfold the entire tree.</li>
+    </ul>
+
+    <h4><img src="icons/settings.svg" alt="Settings" width="20" height="20" /> Settings</h4>
+    <ul>
+      <li>Accessible form the gear icon in the top right corner.</li>
+      <li>Tree Display Controls</li>
+      <ul>
+        <li><strong>Compress Tree Paths</strong>: Groups single-child rule chains into a compact view.</li>
+        <li><strong>Show Hidden Tokens</strong>: Display or hide tokens prefixed with underscores (_).</li>
+      </ul>
+    </ul>
+  </div>
+
+
+
 </body>
 
 </html>

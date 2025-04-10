@@ -1,38 +1,71 @@
 # Pulse Program Parser Demo
 
-This is a web‐based tool that leverages [Pyodide](https://pyodide.org/) to parse Bruker pulse code using [Lark](https://github.com/lark-parser/lark) as its parsing engine. It provides an interactive interface to visualize parse trees and inspect how the input code is tokenized and structured.
+This is a web-based tool that leverages [Pyodide](https://pyodide.org/) to parse Bruker pulse code using [Lark](https://github.com/lark-parser/lark) as its parsing engine. It provides an interactive interface to visualize parse trees and inspect how the input code is tokenized and structured.
 
 ## Features
 
-- **Interactive Grammar & Code Editing:**  
-  Modify the parser grammar and the pulse program code in real time using integrated CodeMirror editors.
+### 🌐 Interactive Grammar & Code Editing
 
-- **Parse Tree Visualization:**  
-  View the structured parse tree with interactive elements, including:
-  - Expandable and collapsible rule nodes.
-  - Highlighting of tokens and syntax sections corresponding to the source code.
-  - Visual cues (such as cursors and selection highlights) linking code segments with their parse tree representation.
-  - Optional compression of node paths for chains of single-child nodes
+- Drag-and-drop support for text files into grammar or input editors.
+- Persistent workspace via localStorage (restores code and settings automatically).
+- Vertical and horizontal resizable split panes.
+
+### 🌳 Parse Tree Visualization
+
+- Interactive parse tree output with:
+  - Expandable/collapsible rule nodes.
+  - Inline syntax highlighting of corresponding input text.
+  - Cursor-linked token highlighting in the tree.
+  - Live selection highlighting: selecting text in code highlights matching tree nodes.
+  - Double-click support: jump to code or tree elements via UI.
+  - Optional **compression** of single-child rule paths for cleaner view.
+  - Toggle display of **hidden tokens**.
+
+### ⚙️ Settings & Customization
+
+- UI panel to control:
+  - Compressed node paths
+  - Toggle display of "hidden" tokens
+- Persistent settings and layout ratios.
+
+### ✅ Parsing Experience
+
+- Parses on `Ctrl+Enter` / `Cmd+Enter` or by clicking "Parse".
+- Responsive feedback and error display.
+- Inline status/toast messages for parse results or workspace actions.
+- Efficient update logic (re-parsing only when changes occur).
+- Graceful failure handling if Pyodide fails to load.
+
+### 🔧 Other Features
+
+- Example grammar and pulse code loaders.
+- QR code linking to demo.
+- Clearable/resettable workspace.
 
 ## Planned Features
 
-- **User Interface Enhancements:**
+### 🔄 UI/UX Improvements
 
-  - Add a progress bar to indicate parsing activity.
-  - Introduce a help panel next to the settings menu, including context‐sensitive help text.
-  - Display help content automatically the first time the page is opened.
-  - Implement smooth transitions across user interface interactions, especially cursor movement in the parse tree.
+- [ ] Move Parser controls to **Advanced** section
+  - Parser type (`LALR`, `Earley`)
+  - Lexer mode (`basic`, `contextual`, `dynamic`, `dynamic_complete`)
+  - Regex engine (`re`, `regex`)
+  - Debug and strict mode flags
+  - Start rule override
+- [ ] Add a progress bar during parsing.
+- [ ] When the pulse code input is empty, display an overview indicating that the user should write, paste, or drag in code
 
-- **Improved Parse Error Handling:**
+### ❗ Error Handling
 
-  - Enhance error reporting to provide more detailed feedback when parsing issues arise.
-  - Add error highlighting directly in the code input area to pinpoint where parsing failures occur.
-  - Add a "submit code" button to allow a user to submit pulse code that is not successfully parsed.
+- [ ] Improved error reporting (detailed feedback on grammar/input issues).
+- [ ] Inline error highlights in the input editor.
+- [ ] "Submit Code" feature for collecting failed inputs for analysis.
 
-- **Extended Analysis Tools:**
-  - Display analysis results:
-    - A control flow graph.
-    - A pulse sequence diagram.
-    - A parameter catalog.
-    - A preprocessed version of the input code.
-    - An auto-formatted version of the code.
+### 📈 Extended Analysis Tools
+
+- [ ] Visualize:
+  - Control flow graph (CFG)
+  - Pulse sequence diagram
+  - Parameter catalog
+  - Preprocessed source view
+  - Auto-formatted version of the code

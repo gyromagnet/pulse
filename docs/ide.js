@@ -113,22 +113,16 @@
     lastParseTree: null,
     treeNodeList: [],
     renderAndDisplayTree: function (tree) {
-      // Clear previous highlights
-      document
-        .querySelectorAll(".selected-tree-node")
-        .forEach((el) => el.classList.remove("selected-tree-node"));
-
+      document.querySelectorAll(".selected-tree-node").forEach((el) => el.classList.remove("selected-tree-node"));
       const compress = document.getElementById("compressCheckbox").checked;
       const showHidden = document.getElementById("showHiddenCheckbox").checked;
       const treeData = compress ? this.compressTree(tree) : tree;
       const output = document.getElementById("output");
       output.className = "";
       output.innerHTML = "";
-
       const treeRoot = this.renderTree(treeData, 0, true, showHidden);
       treeRoot.classList.add("root-node");
       output.appendChild(treeRoot);
-
       this.treeNodeList = [];
       this.collectTreeNodes(treeData);
     },
@@ -178,35 +172,19 @@
       wrapper.className = "tree-node " + (isLast ? "last-child" : "");
       const startPos = node.start_pos ?? null;
       const endPos = node.end_pos ?? null;
-
-      // Attach positions to the element.
       wrapper._startPos = startPos;
       wrapper._endPos = endPos;
       node._domElement = wrapper;
 
       const labelRow = document.createElement("div");
       labelRow.className = "tree-label";
-
-      // Attach event listeners for highlighting.
-      wrapper.addEventListener("mouseenter", (e) => {
-        e.stopPropagation();
-        UI.highlightRange(startPos, endPos);
-      });
-      wrapper.addEventListener("mouseleave", (e) => {
-        UI.clearHighlight();
-      });
-      labelRow.addEventListener("mouseenter", (e) => {
-        e.stopPropagation();
-        UI.highlightRange(startPos, endPos);
-      });
-      labelRow.addEventListener("mouseleave", (e) => {
-        UI.clearHighlight();
-      });
+      wrapper.addEventListener("mouseenter", (e) => { e.stopPropagation(); UI.highlightRange(startPos, endPos); });
+      wrapper.addEventListener("mouseleave", (e) => { UI.clearHighlight(); });
+      labelRow.addEventListener("mouseenter", (e) => { e.stopPropagation(); UI.highlightRange(startPos, endPos); });
+      labelRow.addEventListener("mouseleave", (e) => { UI.clearHighlight(); });
 
       if (node.type === "rule" && node.children && node.children.length > 0) {
-        // (keep your rule node rendering as before)
         labelRow.classList.add("collapse-toggle");
-
         const label = document.createElement("span");
         label.className = "tree-rule";
         const parts = node.name.split(" > ");
@@ -223,7 +201,6 @@
         });
         labelRow.appendChild(label);
         wrapper.appendChild(labelRow);
-
         const childrenContainer = document.createElement("div");
         childrenContainer.className = "tree-children";
         node.children.forEach((child, index) => {
@@ -231,37 +208,26 @@
           childrenContainer.appendChild(this.renderTree(child, depth + 1, childIsLast, showHidden));
         });
         wrapper.appendChild(childrenContainer);
-
         labelRow.addEventListener("click", (e) => {
           e.stopPropagation();
           wrapper.classList.toggle("collapsed");
         });
-      }
-
-      else if (node.type === "token") {
-        // Always render the token node so that it can be highlighted if the cursor falls inside.
+      } else if (node.type === "token") {
+        if (node.hidden && !showHidden) {
+          wrapper.classList.add("hidden-token-placeholder");
+          return wrapper;
+        }
         const tokenWrapper = document.createElement("span");
         tokenWrapper.className = "tree-token";
-        // Add a class for hidden tokens if the setting is off.
-        if (node.hidden && !showHidden) {
-          tokenWrapper.classList.add("hidden-token");
-        }
-
-        // Create the terminal label if the token is not anonymous.
         if (!node.name.startsWith("__ANON")) {
           const label = document.createElement("span");
           label.className = "tree-terminal";
           label.textContent = `${node.name}:`;
           tokenWrapper.appendChild(label);
         }
-
-        // Create the token value with quotes.
         const value = document.createElement("span");
         value.className = "tree-text";
-        // Use your helper function to format the token value.
-        value.textContent = ` "${formatTokenValue(node.value)}"`;
-
-        // When double-clicking the token value, jump the pulse code to its start.
+        value.textContent = ` \"${formatTokenValue(node.value)}\"`;
         value.addEventListener("dblclick", () => {
           if (node.start_pos != null) {
             const pos = EditorModule.inputEditor.posFromIndex(node.start_pos);
@@ -272,9 +238,7 @@
         tokenWrapper.appendChild(value);
         labelRow.appendChild(tokenWrapper);
         wrapper.appendChild(labelRow);
-
       } else if (node.type === "rule") {
-        // (handle rule nodes without children, if needed)
         const label = document.createElement("span");
         label.className = "tree-rule";
         label.textContent = node.name;
@@ -366,58 +330,43 @@
         UI.treeCursorEl = null;
       }
       if (!TreeModule.lastParseTree) return;
-
       const cursorPos = EditorModule.inputEditor.getCursor();
       const cursorIndex = EditorModule.inputEditor.indexFromPos(cursorPos);
       const focusedNode = UI.findDeepestNode(TreeModule.lastParseTree, cursorIndex);
-
       if (focusedNode && focusedNode._domElement) {
         document
           .querySelectorAll(".highlighted-tree-node-cursor")
           .forEach((el) => el.classList.remove("highlighted-tree-node-cursor"));
-        focusedNode._domElement.classList.add("highlighted-tree-node-cursor");
 
-        const label = focusedNode._domElement.querySelector(".tree-label");
         const showHidden = document.getElementById("showHiddenCheckbox").checked;
-        if (
-          focusedNode.type === "token" &&
-          (showHidden || !focusedNode.hidden)
-        ) {
-          const tokenTextEl =
-            focusedNode._domElement.querySelector(".tree-text");
-          if (!tokenTextEl) return;
 
-          const offset = cursorIndex - focusedNode.start_pos;
-          const safeOffset = Math.max(
-            0,
-            Math.min(offset, focusedNode.value.length)
-          );
-
-          const formatted = formatTokenValue(focusedNode.value);
-          const beforeText = formatted.slice(0, safeOffset);
-          const afterText = formatted.slice(safeOffset);
-
-          // Always add quotes explicitly
-          const openingQuote = '"';
-          const closingQuote = '"';
-
-          const beforeNode = document.createTextNode(openingQuote + beforeText);
-          const afterNode = document.createTextNode(afterText + closingQuote);
-
-          const cursorEl = document.createElement("span");
-          cursorEl.className = "tree-cursor";
-
-          // Clear the token text element and append the new nodes
-          tokenTextEl.innerHTML = "";
-          tokenTextEl.append(beforeNode, cursorEl, afterNode);
-          UI.treeCursorEl = cursorEl;
-        } else if (label) {
-          const cursorEl = document.createElement("span");
-          cursorEl.className = "tree-cursor";
-          label.appendChild(cursorEl);
-          UI.treeCursorEl = cursorEl;
+        if (focusedNode.hidden && !showHidden) {
+          const cursorLine = document.createElement("div");
+          cursorLine.className = "tree-cursor tree-cursor-line";
+          focusedNode._domElement.appendChild(cursorLine);
+          UI.treeCursorEl = cursorLine;
+        } else {
+          focusedNode._domElement.classList.add("highlighted-tree-node-cursor");
+          if (
+            focusedNode.type === "token" &&
+            focusedNode._domElement &&
+            focusedNode._domElement.querySelector(".tree-text")
+          ) {
+            const tokenTextEl = focusedNode._domElement.querySelector(".tree-text");
+            const offset = cursorIndex - focusedNode.start_pos;
+            const safeOffset = Math.max(0, Math.min(offset, focusedNode.value.length));
+            const formatted = formatTokenValue(focusedNode.value);
+            const beforeText = formatted.slice(0, safeOffset);
+            const afterText = formatted.slice(safeOffset);
+            const beforeNode = document.createTextNode('"' + beforeText);
+            const afterNode = document.createTextNode(afterText + '"');
+            const cursorEl = document.createElement("span");
+            cursorEl.className = "tree-cursor";
+            tokenTextEl.innerHTML = "";
+            tokenTextEl.append(beforeNode, cursorEl, afterNode);
+            UI.treeCursorEl = cursorEl;
+          }
         }
-        // SCROLL: Ensure the focused tree node is in view (centered) with smooth animation.
         focusedNode._domElement.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     },
@@ -475,8 +424,8 @@
       }, duration);
     },
     toggleSettings: function () {
-      const panel = document.getElementById("settingsPanel");
-      panel.style.display = panel.style.display === "block" ? "none" : "block";
+      const popover = document.getElementById("settingsPopover");
+      popover.style.display = popover.style.display === "block" ? "none" : "block";
     },
   };
 
@@ -493,6 +442,7 @@
       "show_hidden",
       "grammarHeight",
       "inputHeight",
+      "enableAdvanced",
     ],
     saveSettings: function () {
       this.settingsKeys.forEach((key) => {
@@ -519,11 +469,28 @@
           document.getElementById(key + "Select") ||
           document.getElementById(key + "Checkbox");
         if (!el) return;
+
         const value = localStorage.getItem(key);
         if (el.type === "checkbox") el.checked = value === "true";
         else if (value !== null) el.value = value;
+
+        // Add listener for immediate save
+        el.addEventListener("change", () => {
+          const val = el.type === "checkbox" ? el.checked : el.value;
+          localStorage.setItem(key, val);
+
+          if (key === "enableAdvanced") {
+            const advSection = document.getElementById("advancedSettings");
+            advSection.style.display = el.checked ? "block" : "none";
+          }
+
+          if (["compress_tree", "show_hidden"].includes(key) && TreeModule.lastParseTree) {
+            TreeModule.renderAndDisplayTree(TreeModule.lastParseTree);
+          }
+        });
       });
 
+      // Handle layout restoration
       const grammarBlock = document.getElementById("grammar-block");
       const inputBlock = document.getElementById("input-block");
       const savedGrammarHeight = localStorage.getItem("grammarHeight");
@@ -532,17 +499,49 @@
         grammarBlock.style.flex = "0 0 " + savedGrammarHeight + "px";
         inputBlock.style.flex = "0 0 " + savedInputHeight + "px";
       }
+
+      // Show/hide advanced settings on initial load
+      const advEl = document.getElementById("enableAdvancedCheckbox");
+      const advSection = document.getElementById("advancedSettings");
+      const enabled = localStorage.getItem("enableAdvanced") === "true";
+      advEl.checked = enabled;
+      advSection.style.display = enabled ? "block" : "none";
     },
     saveToLocalStorage: function () {
       localStorage.setItem("lark_grammar", EditorModule.grammarEditor.getValue());
       localStorage.setItem("lark_input", EditorModule.inputEditor.getValue());
     },
-    loadFromLocalStorage: function () {
-      const savedGrammar = localStorage.getItem("lark_grammar");
-      const savedInput = localStorage.getItem("lark_input");
-      if (savedGrammar) EditorModule.grammarEditor.setValue(savedGrammar);
-      if (savedInput) EditorModule.inputEditor.setValue(savedInput);
-      this.loadSettings();
+    loadFromLocalStorage: async function () {
+      const grammarInput = document.getElementById('grammar');
+      const pulseCodeInput = document.getElementById('input');
+
+      const savedGrammar = localStorage.getItem('grammar');
+      const savedPulseCode = localStorage.getItem('pulseCode');
+
+      // If both are already stored, just load them
+      if (savedGrammar !== null) {
+        EditorModule.grammarEditor.setValue(savedGrammar);
+        console.log('Loaded grammar from localStorage');
+      } else {
+        // Fetch and load default grammar
+        const res = await fetch('grammars/bruker.lark'); // adjust path if needed
+        const defaultGrammar = await res.text();
+        EditorModule.grammarEditor.setValue(defaultGrammar);
+        localStorage.setItem('grammar', defaultGrammar);
+        console.log('Loaded default grammar');
+      }
+
+      if (savedPulseCode !== null) {
+        EditorModule.inputEditor.setValue(savedPulseCode);
+        console.log('Loaded pulse code from localStorage');
+      } else {
+        // Fetch and load default pulse code
+        const res = await fetch('example_code/zg'); // adjust path if needed
+        const defaultPulseCode = await res.text();
+        EditorModule.inputEditor.setValue(defaultPulseCode);
+        localStorage.setItem('pulseCode', defaultPulseCode);
+        console.log('Loaded default pulse code');
+      }
     },
     resetWorkspace: function () {
       localStorage.clear();
@@ -716,6 +715,40 @@ parse_input(
       };
 
       SettingsModule.loadFromLocalStorage();
+
+      // Help toggle
+      document.getElementById("helpToggle").addEventListener("click", () => {
+        const helpPopover = document.getElementById("helpPopover");
+        helpPopover.style.display = helpPopover.style.display === "block" ? "none" : "block";
+      });
+
+      // Close popovers on outside click
+      document.addEventListener("click", function (e) {
+        const help = document.getElementById("helpPopover");
+        const settings = document.getElementById("settingsPopover");
+        const helpToggle = document.getElementById("helpToggle");
+        const settingsToggle = document.getElementById("settingsToggle");
+
+        // If click is outside help and not on help toggle
+        if (
+          help.style.display === "block" &&
+          !help.contains(e.target) &&
+          !helpToggle.contains(e.target)
+        ) {
+          help.style.display = "none";
+        }
+
+        // If click is outside settings and not on settings toggle
+        if (
+          settings.style.display === "block" &&
+          !settings.contains(e.target) &&
+          !settingsToggle.contains(e.target)
+        ) {
+          SettingsModule.saveSettingsAndClose()
+          // settings.style.display = "none";
+        }
+      });
+
     },
   };
 
@@ -753,20 +786,6 @@ parse_input(
   }
   init();
 
-  // --- Global Error Handler for Script Load Failures ---
-  window.handleLoadError = function (message) {
-    const errorDiv = document.createElement("div");
-    errorDiv.style.position = "fixed";
-    errorDiv.style.top = "0";
-    errorDiv.style.left = "0";
-    errorDiv.style.right = "0";
-    errorDiv.style.padding = "1em";
-    errorDiv.style.background = "red";
-    errorDiv.style.color = "white";
-    errorDiv.style.zIndex = "10000";
-    errorDiv.textContent = message;
-    document.body.appendChild(errorDiv);
-  };
 
 })();
 
