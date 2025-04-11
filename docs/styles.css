@@ -41,7 +41,7 @@ h3 {
   height: 40px;
   border-radius: 2px;
   background: #aaa;
-  transition: background 0.2s;
+  transition: background 0.2s ease;
 }
 
 .resizer-vertical:hover .grip-icon-vertical {
@@ -67,7 +67,7 @@ h3 {
   height: 4px;
   border-radius: 2px;
   background: #aaa;
-  transition: background 0.2s;
+  transition: background 0.2s ease;
 }
 
 .resizer-horizontal:hover .grip-icon-horizontal {
@@ -180,7 +180,7 @@ pre#output {
   display: inline-block;
   width: 1em;
   margin-left: 0.5px;
-  transition: transform 0.2s;
+  transition: transform 0.2s ease;
   transform-origin: 30% 60%;
   z-index: 1;
 }
@@ -290,25 +290,16 @@ pre#output {
 }
 
 @keyframes blink {
-  to {
-    visibility: hidden;
+
+  0%,
+  50% {
+    opacity: 1;
   }
-}
 
-/* QR Code Float */
-.qr-float {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  width: 100px;
-  height: 100px;
-  z-index: 1000;
-  opacity: 0.9;
-  transition: opacity 0.3s;
-}
-
-.qr-float:hover {
-  opacity: 1;
+  51%,
+  100% {
+    opacity: 0;
+  }
 }
 
 /* Editor Header and Examples */
@@ -464,9 +455,59 @@ pre#output {
   top: 50px;
   right: 10px;
   width: 350px;
+  padding: 15px 20px;
+  line-height: 1.4;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
+#settingsPopover h3 {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin: 0.3em 0;
+  padding-left: 0;
+}
 
+#settingsPopover h4 {
+  font-size: 1em;
+  font-weight: 500;
+  margin-bottom: 0.25em;
+  color: #444;
+}
+
+#settingsPopover label {
+  display: flex;
+  align-items: center;
+  margin: 0.3em 0;
+  font-size: 0.9em;
+  gap: 0.5em;
+}
+
+#settingsPopover select,
+#settingsPopover input[type="text"] {
+  margin-left: 0.5em;
+  flex-grow: 1;
+  min-width: 120px;
+}
+
+#settingsPopover input[type="checkbox"] {
+  margin: 0;
+}
+
+#settingsPopover select {
+  background: #f9f9f9;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0.25em 0.5em;
+  font-size: 0.9em;
+  color: #333;
+  transition: border-color 0.2s ease;
+}
+
+#settingsPopover select:focus {
+  border-color: #0074d9;
+  outline: none;
+}
 
 .icon-group {
   position: absolute;
@@ -493,4 +534,157 @@ pre#output {
   height: 24px;
   cursor: pointer;
   z-index: 1001;
+}
+
+.collapsible-heading {
+  cursor: pointer;
+  margin: 0.5em 0;
+  /* color: #0074d9; */
+  font-weight: bold;
+}
+
+.collapsible-section {
+  overflow: hidden;
+  max-height: 1000px;
+  /* large enough to fit content */
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  opacity: 1;
+}
+
+.collapsible-section.hidden {
+  max-height: 0;
+  opacity: 0;
+}
+
+/* Collapse indicator for collapsible settings */
+.collapsible-heading::before {
+  content: "▼";
+  display: inline-block;
+  width: 1em;
+  margin-left: 0.5px;
+  margin-right: 0.25em;
+  transition: transform 0.2s ease;
+  transform-origin: 30% 60%;
+}
+
+.collapsible-heading:not(.open)::before {
+  transform: rotate(-90deg);
+}
+
+#resetWorkspaceBtn {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 0.85em;
+  text-align: right;
+  cursor: pointer;
+  padding: 0.5em 0.75em;
+  transition: color 0.2s ease;
+}
+
+#resetWorkspaceBtn:hover {
+  color: #333;
+}
+
+.settings-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1em;
+  border-top: 1px solid #ddd;
+  padding-top: 0.75em;
+}
+
+.tree-text-wrapper {
+  position: relative;
+  font-family: monospace;
+  white-space: pre;
+  display: inline-block;
+}
+
+.tree-cursor {
+  position: absolute;
+  height: 1em;
+  width: 1px;
+  background: black;
+  animation: blink 1s steps(1, start) infinite;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+@keyframes blink {
+
+  0%,
+  40% {
+    opacity: 1;
+  }
+
+  60%,
+  100% {
+    opacity: 0;
+  }
+}
+
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5em;
+  margin: 0.4em 0;
+  position: relative;
+  font-size: 0.9em;
+}
+
+.setting-item label {
+  flex-grow: 1;
+}
+
+.setting-item input[type="checkbox"],
+.setting-item select,
+.setting-item input[type="text"] {
+  flex-shrink: 0;
+  min-width: 120px;
+}
+
+.tooltip {
+  position: relative;
+  display: inline-block;
+  margin-left: 0.5em;
+  flex-shrink: 0;
+  cursor: help;
+}
+
+
+.tooltip img {
+  width: 14px;
+  height: 14px;
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+  vertical-align: middle;
+}
+
+.tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 125%;
+  right: 95%;
+  background: #333;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.75em;
+  white-space: normal;
+  width: max-content;
+  max-width: 320px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 100;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.tooltip:hover::after {
+  opacity: 1;
 }

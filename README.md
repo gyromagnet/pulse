@@ -23,10 +23,18 @@ This is a web-based tool that leverages [Pyodide](https://pyodide.org/) to parse
 
 ### ⚙️ Settings & Customization
 
-- UI panel to control:
-  - Compressed node paths
-  - Toggle display of "hidden" tokens
-- Persistent settings and layout ratios.
+- Settings panel with:
+  - Toggleable **Advanced Settings** (parser type, lexer mode, regex engine, debug/strict mode, start rule).
+  - Tree display controls (compress rule paths, show/hide hidden tokens).
+  - Auto-persisted settings via localStorage.
+- QR code linking to demo.
+
+### 📚 Help & Documentation
+
+- Popover-based Help panel with:
+  - Step-by-step usage instructions.
+  - Inline icons and visual guides.
+  - Auto-hide behavior for cleaner UI.
 
 ### ✅ Parsing Experience
 
@@ -41,17 +49,14 @@ This is a web-based tool that leverages [Pyodide](https://pyodide.org/) to parse
 - Example grammar and pulse code loaders.
 - QR code linking to demo.
 - Clearable/resettable workspace.
+- Syntax-aware token formatting in tree display.
+
+---
 
 ## Planned Features
 
 ### 🔄 UI/UX Improvements
 
-- [ ] Move Parser controls to **Advanced** section
-  - Parser type (`LALR`, `Earley`)
-  - Lexer mode (`basic`, `contextual`, `dynamic`, `dynamic_complete`)
-  - Regex engine (`re`, `regex`)
-  - Debug and strict mode flags
-  - Start rule override
 - [ ] Add a progress bar during parsing.
 - [ ] When the pulse code input is empty, display an overview indicating that the user should write, paste, or drag in code
 

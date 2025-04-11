@@ -48,6 +48,7 @@
   </div>
 
   <div id="pyodideStatus" class="loading-message">Loading Pyodide...</div>
+
   <h1>Pulse Program Parser</h1>
 
   <div class="split-pane">
@@ -107,46 +108,91 @@
     onerror="handleLoadError('Failed to load. Please check your network connection.')"></script>
 
   <script src="ide.js"></script>
-  <img src="img/qr.gif" alt="QR Code" class="qr-float" />
   <div id="toast" class="toast hidden"></div>
 
   <div class="popover" id="settingsPopover">
     <h3>Settings</h3>
 
-    <label><input type="checkbox" id="enableAdvancedCheckbox" /> Enable Advanced Settings</label>
-
-    <div id="advancedSettings" style="display: none;">
-      <h4>Parser</h4>
-      <label>Parser:
-        <select id="parserSelect">
-          <option value="lalr">LALR</option>
-          <option value="earley">Earley</option>
-        </select>
-      </label>
-      <label>Lexer:
-        <select id="lexerSelect">
-          <option value="basic">basic</option>
-          <option value="contextual">contextual</option>
-          <option value="dynamic">dynamic</option>
-          <option value="dynamic_complete">dynamic_complete</option>
-        </select>
-      </label>
-      <label>Regular Expression Engine:
-        <select id="regexSelect">
-          <option value="re">re</option>
-          <option value="regex">regex</option>
-        </select>
-      </label>
-      <label><input type="checkbox" id="debugCheckbox" /> Debug</label>
-      <label><input type="checkbox" id="strictCheckbox" /> Strict</label>
-      <label>Start rule: <input type="text" id="startInput" /></label>
-      <hr />
+    <h4>Display</h4>
+    <div class="setting-item">
+      <label for="compressCheckbox">Compact Tree View</label>
+      <input type="checkbox" id="compressCheckbox" />
+      <span class="tooltip" data-tooltip="Collapse single-rule chains in the parse tree for a cleaner view."><img
+          src="icons/help.svg" alt="Help" width="20" height="20" /></span>
     </div>
 
-    <h4>Display</h4>
-    <label><input type="checkbox" id="compressCheckbox" /> Compress Tree Paths</label>
-    <label><input type="checkbox" id="showHiddenCheckbox" /> Show Hidden Tokens</label>
-    <button onclick="resetWorkspace()">Reset Workspace</button>
+
+
+    <div class="setting-item">
+      <label for="showHiddenCheckbox">Include Hidden Tokens</label>
+      <input type="checkbox" id="showHiddenCheckbox" />
+      <span class="tooltip" data-tooltip="Show tokens like whitespace and punctuation that are usually hidden."><img
+          src="icons/help.svg" alt="Help" width="20" height="20" /></span>
+    </div>
+
+    <h4 id="advancedToggle" class="collapsible-heading">Advanced Settings</h4>
+    <div id="advancedSettings" class="collapsible-section hidden">
+      <h4>Parser Options</h4>
+
+      <div class="setting-item">
+        <label for="parserSelect">Parser Algorithm</label>
+        <select id="parserSelect">
+          <option value="lalr">LALR</option>
+          <option value="earley" selected>Earley</option>
+        </select>
+        <span class="tooltip"
+          data-tooltip="Choose between LALR (fast) and Earley (more flexible, handles ambiguous grammars)."><img
+            src="icons/help.svg" alt="Help" width="20" height="20" /></span>
+      </div>
+
+      <div class="setting-item">
+        <select id="lexerSelect">
+          <option value="basic">Basic</option>
+          <option value="contextual">Contextual</option>
+          <option value="dynamic" selected>Dynamic</option>
+          <option value="dynamic_complete">Dynamic Complete</option>
+        </select>
+        <label for="lexerSelect">Lexing Mode</label>
+        <span class="tooltip" data-tooltip="Choose how tokens are matched: basic, contextual, or dynamic."><img
+            src="icons/help.svg" alt="Help" width="20" height="20" /></span>
+      </div>
+
+      <div class="setting-item">
+        <label for="regexSelect">Regex Engine</label>
+        <select id="regexSelect">
+          <option value="re">re (built-in)</option>
+          <option value="regex" selected>regex (enhanced)</option>
+        </select>
+        <span class="tooltip" data-tooltip="Use Python's built-in 're' or the more powerful 'regex' engine."><img
+            src="icons/help.svg" alt="Help" width="20" height="20" /></span>
+      </div>
+
+      <div class="setting-item">
+        <label for="debugCheckbox">Enable Debug Mode</label>
+        <input type="checkbox" id="debugCheckbox" />
+        <span class="tooltip" data-tooltip="Print detailed logs from the parser. For development only."><img
+            src="icons/help.svg" alt="Help" width="20" height="20" /></span>
+      </div>
+
+      <div class="setting-item">
+        <label for="strictCheckbox">Strict Grammar Mode</label>
+        <input type="checkbox" id="strictCheckbox" />
+        <span class="tooltip" data-tooltip="Enforce strict grammar validation and reject undefined rules."><img
+            src="icons/help.svg" alt="Help" width="20" height="20" /></span>
+      </div>
+
+      <div class="setting-item">
+        <label for="startInput">Starting Rule</label>
+        <input type="text" id="startInput" value="pulseprogram" />
+        <span class="tooltip"
+          data-tooltip="The name of the rule to start parsing from. Default is usually 'start'."><img
+            src="icons/help.svg" alt="Help" width="20" height="20" /></span>
+      </div>
+    </div>
+
+    <div class="settings-footer">
+      <button id="resetWorkspaceBtn" onclick="resetWorkspace()">Reset Workspace</button>
+    </div>
   </div>
 
   <div class="popover" id="helpPopover">

@@ -217,17 +217,31 @@
           wrapper.classList.add("hidden-token-placeholder");
           return wrapper;
         }
+
         const tokenWrapper = document.createElement("span");
         tokenWrapper.className = "tree-token";
+
         if (!node.name.startsWith("__ANON")) {
           const label = document.createElement("span");
           label.className = "tree-terminal";
           label.textContent = `${node.name}:`;
           tokenWrapper.appendChild(label);
         }
+
+        // Container for the token text and cursor
+        const valueWrapper = document.createElement("span");
+        valueWrapper.className = "tree-text-wrapper";
+
         const value = document.createElement("span");
         value.className = "tree-text";
-        value.textContent = ` \"${formatTokenValue(node.value)}\"`;
+        value.textContent = ` "${formatTokenValue(node.value)}"`;
+        valueWrapper.appendChild(value);
+
+        // Store references for cursor logic later
+        node._textElement = value;
+        node._textWrapper = valueWrapper;
+
+        // Double-click to jump to source code
         value.addEventListener("dblclick", () => {
           if (node.start_pos != null) {
             const pos = EditorModule.inputEditor.posFromIndex(node.start_pos);
@@ -235,7 +249,8 @@
             EditorModule.inputEditor.scrollIntoView(pos, 100);
           }
         });
-        tokenWrapper.appendChild(value);
+
+        tokenWrapper.appendChild(valueWrapper);
         labelRow.appendChild(tokenWrapper);
         wrapper.appendChild(labelRow);
       } else if (node.type === "rule") {
@@ -352,19 +367,19 @@
             focusedNode._domElement &&
             focusedNode._domElement.querySelector(".tree-text")
           ) {
-            const tokenTextEl = focusedNode._domElement.querySelector(".tree-text");
-            const offset = cursorIndex - focusedNode.start_pos;
-            const safeOffset = Math.max(0, Math.min(offset, focusedNode.value.length));
-            const formatted = formatTokenValue(focusedNode.value);
-            const beforeText = formatted.slice(0, safeOffset);
-            const afterText = formatted.slice(safeOffset);
-            const beforeNode = document.createTextNode('"' + beforeText);
-            const afterNode = document.createTextNode(afterText + '"');
-            const cursorEl = document.createElement("span");
-            cursorEl.className = "tree-cursor";
-            tokenTextEl.innerHTML = "";
-            tokenTextEl.append(beforeNode, cursorEl, afterNode);
-            UI.treeCursorEl = cursorEl;
+
+            if (focusedNode._textWrapper && focusedNode.start_pos != null) {
+              const cursorEl = document.createElement("span");
+              cursorEl.className = "tree-cursor";
+
+              // Estimate position based on monospace character width
+              const charWidth = 7; // tweak based on your font and zoom level
+              const offset = Math.max(0, cursorIndex - focusedNode.start_pos);
+              cursorEl.style.left = `${offset * charWidth + 12}px`; // 12px accounts for leading space/quote
+
+              focusedNode._textWrapper.appendChild(cursorEl);
+              UI.treeCursorEl = cursorEl;
+            }
           }
         }
         focusedNode._domElement.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -471,23 +486,34 @@
         if (!el) return;
 
         const value = localStorage.getItem(key);
-        if (el.type === "checkbox") el.checked = value === "true";
-        else if (value !== null) el.value = value;
+        if (value !== null) {
+          if (el.type === "checkbox") el.checked = value === "true";
+          else el.value = value;
+        } else {
+          const defaults = {
+            parser: "earley",
+            lexer: "dynamic",
+            regex: "regex",
+            debug: false,
+            strict: false,
+            start: "pulseprogram",
+            compress_tree: true,
+            show_hidden: false,
+          };
+          const defaultVal = defaults[key];
+          if (el.type === "checkbox") el.checked = defaultVal === true;
+          else if (defaultVal != null) el.value = defaultVal;
 
-        // Add listener for immediate save
-        el.addEventListener("change", () => {
-          const val = el.type === "checkbox" ? el.checked : el.value;
-          localStorage.setItem(key, val);
+          // Add listener for immediate save
+          el.addEventListener("change", () => {
+            const val = el.type === "checkbox" ? el.checked : el.value;
+            localStorage.setItem(key, val);
 
-          if (key === "enableAdvanced") {
-            const advSection = document.getElementById("advancedSettings");
-            advSection.style.display = el.checked ? "block" : "none";
-          }
-
-          if (["compress_tree", "show_hidden"].includes(key) && TreeModule.lastParseTree) {
-            TreeModule.renderAndDisplayTree(TreeModule.lastParseTree);
-          }
-        });
+            if (["compress_tree", "show_hidden"].includes(key) && TreeModule.lastParseTree) {
+              TreeModule.renderAndDisplayTree(TreeModule.lastParseTree);
+            }
+          });
+        }
       });
 
       // Handle layout restoration
@@ -499,13 +525,6 @@
         grammarBlock.style.flex = "0 0 " + savedGrammarHeight + "px";
         inputBlock.style.flex = "0 0 " + savedInputHeight + "px";
       }
-
-      // Show/hide advanced settings on initial load
-      const advEl = document.getElementById("enableAdvancedCheckbox");
-      const advSection = document.getElementById("advancedSettings");
-      const enabled = localStorage.getItem("enableAdvanced") === "true";
-      advEl.checked = enabled;
-      advSection.style.display = enabled ? "block" : "none";
     },
     saveToLocalStorage: function () {
       localStorage.setItem("lark_grammar", EditorModule.grammarEditor.getValue());
@@ -558,6 +577,7 @@
   // --- Main Application ---
   const App = {
     runParser: async function () {
+
       if (!PyodideModule.isReady) {
         UI.showToast("⏳ Pyodide is still loading, please wait...", "error");
         return;
@@ -566,6 +586,7 @@
         console.log("No changes detected. Skipping parse.");
         return;
       }
+
       const grammar = EditorModule.grammarEditor.getValue();
       const text = EditorModule.inputEditor.getValue();
       const start = document.getElementById("startInput").value || "start";
@@ -579,16 +600,16 @@
 
       try {
         const pyCode = `
-parse_input(
-    ${JSON.stringify(grammar)},
-    ${JSON.stringify(text)},
-    ${JSON.stringify(start)},
-    ${JSON.stringify(parserType)},
-    ${JSON.stringify(lexer)},
-    ${debug ? "True" : "False"},
-    ${strict ? "True" : "False"},
-    ${regex ? "True" : "False"}
-)
+    parse_input(
+        ${JSON.stringify(grammar)},
+        ${JSON.stringify(text)},
+        ${JSON.stringify(start)},
+        ${JSON.stringify(parserType)},
+        ${JSON.stringify(lexer)},
+        ${debug ? "True" : "False"},
+        ${strict ? "True" : "False"},
+        ${regex ? "True" : "False"}
+    )
         `;
         const result = await PyodideModule.pyodide.runPythonAsync(pyCode);
         TreeModule.lastParseTree = JSON.parse(result);
@@ -600,7 +621,9 @@ parse_input(
         output.className = "error";
         output.textContent = e.message || e;
         UI.showToast("❌ Parsing failed", "error");
+      } finally {
       }
+
     },
     hasContentChanged: function () {
       const currentGrammar = EditorModule.grammarEditor.getValue();
@@ -747,6 +770,12 @@ parse_input(
           SettingsModule.saveSettingsAndClose()
           // settings.style.display = "none";
         }
+      });
+
+      document.getElementById("advancedToggle").addEventListener("click", () => {
+        const section = document.getElementById("advancedSettings");
+        section.classList.toggle("hidden");
+        document.getElementById("advancedToggle").classList.toggle("open");
       });
 
     },
