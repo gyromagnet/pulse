@@ -833,14 +833,39 @@
       document.getElementById("submitDownloadBtn").addEventListener("click", () => {
         const grammar = EditorModule.grammarEditor.getValue();
         const input = EditorModule.inputEditor.getValue();
-        const body = encodeURIComponent(
-          `### What happened?\nParser failed on valid Bruker pulse code.\n\n### Pulse Code\n\`\`\`\n${input}\n\`\`\`\n\n### Grammar Used\n\`\`\`\n${grammar}\n\`\`\`\n\n### Additional Notes\n(Please include context or expectations if available.)`
-        );
         const title = encodeURIComponent("Parser failed on valid Bruker code");
-        const repo = "gyromagnet/pulse";
-        const url = `https://github.com/${repo}/issues/new?title=${title}&body=${body}`;
 
-        window.open(url, "_blank");
+        // Copy full data to clipboard
+        const issueBody = `### What happened?
+
+Parser failed on valid Bruker pulse code.
+
+### Pulse Code
+
+\`\`\`bruker
+${input}
+\`\`\`
+
+### Grammar Used
+
+\`\`\`lark
+${grammar}
+\`\`\`
+
+### Additional Notes
+
+(Please add any extra context here.)
+`;
+
+        // Copy to clipboard
+        navigator.clipboard.writeText(issueBody).then(() => {
+          // Short GitHub issue link
+          const url = `https://github.com/gyromagnet/pulse/issues/new?title=${title}`;
+          window.open(url, "_blank");
+          UI.showToast("Copied full issue body to clipboard. Paste it into the GitHub issue.", "success");
+        }).catch(err => {
+          alert("Failed to copy to clipboard. Please copy manually.");
+        });
       });
 
 
