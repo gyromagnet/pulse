@@ -1,0 +1,18 @@
+{
+  "grammars": [
+    {
+      "name": "Bruker Default",
+      "file": "grammars/bruker.lark"
+    }
+  ],
+  "inputs": [
+    {
+      "name": "zg",
+      "file": "example_code/zg"
+    },
+    {
+      "name": "HNCO",
+      "file": "example_code/hnco_3c_pfg_lek_600_sh_cp"
+    }
+  ]
+}

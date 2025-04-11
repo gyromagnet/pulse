@@ -4,13 +4,14 @@ This is a web-based tool that leverages [Pyodide](https://pyodide.org/) to parse
 
 ## Features
 
-### 🌐 Interactive Grammar & Code Editing
+### Interactive Grammar & Code Editing
 
 - Drag-and-drop support for text files into grammar or input editors.
 - Persistent workspace via localStorage (restores code and settings automatically).
 - Vertical and horizontal resizable split panes.
+- Keyboard shortcut: `Ctrl+Enter` / `Cmd+Enter` triggers parsing.
 
-### 🌳 Parse Tree Visualization
+### Parse Tree Visualization
 
 - Interactive parse tree output with:
   - Expandable/collapsible rule nodes.
@@ -20,53 +21,66 @@ This is a web-based tool that leverages [Pyodide](https://pyodide.org/) to parse
   - Double-click support: jump to code or tree elements via UI.
   - Optional **compression** of single-child rule paths for cleaner view.
   - Toggle display of **hidden tokens**.
+  - Parse tree cursor that follows current editor position.
 
-### ⚙️ Settings & Customization
+### Settings & Customization
 
 - Settings panel with:
   - Toggleable **Advanced Settings** (parser type, lexer mode, regex engine, debug/strict mode, start rule).
   - Tree display controls (compress rule paths, show/hide hidden tokens).
   - Auto-persisted settings via localStorage.
-- QR code linking to demo.
 
-### 📚 Help & Documentation
+### Help & Documentation
 
 - Popover-based Help panel with:
   - Step-by-step usage instructions.
   - Inline icons and visual guides.
   - Auto-hide behavior for cleaner UI.
 
-### ✅ Parsing Experience
+### Parsing Experience
 
 - Parses on `Ctrl+Enter` / `Cmd+Enter` or by clicking "Parse".
 - Responsive feedback and error display.
 - Inline status/toast messages for parse results or workspace actions.
 - Efficient update logic (re-parsing only when changes occur).
 - Graceful failure handling if Pyodide fails to load.
+- If an error occurs, shows the **line and column**.
+- Highlights the exact text in the code editor that caused the error.
+- Displays a dedicated popover to submit parsing failures (as GitHub issues).
 
-### 🔧 Other Features
+### Other Features
 
-- Example grammar and pulse code loaders.
+- Example grammar and pulse code loaders (loaded dynamically from `examples.json`).
 - QR code linking to demo.
 - Clearable/resettable workspace.
 - Syntax-aware token formatting in tree display.
+- Export parse tree as JSON.
+- Mobile-friendly layout with media queries.
+
+---
+
+## Submitting Parsing Failures
+
+If a valid Bruker pulse program fails to parse, you can report it directly through the app:
+
+- After a failure, a **submit popover** appears.
+- Clicking "Submit Parsing Failure" opens a pre-filled GitHub issue with:
+  - The grammar used.
+  - The input code that failed.
+  - Additional explanation and instructions.
+
+This helps improve the parser by collecting edge cases and bugs from real-world inputs.
 
 ---
 
 ## Planned Features
 
-### 🔄 UI/UX Improvements
+### Error Handling
 
-- [ ] Add a progress bar during parsing.
-- [ ] When the pulse code input is empty, display an overview indicating that the user should write, paste, or drag in code
+- [ ] Show **line and column** of error (if available from Lark).
+- [ ] Underline or mark erroneous text in the input editor.
 
-### ❗ Error Handling
-
-- [ ] Improved error reporting (detailed feedback on grammar/input issues).
-- [ ] Inline error highlights in the input editor.
-- [ ] "Submit Code" feature for collecting failed inputs for analysis.
-
-### 📈 Extended Analysis Tools
+### Extended Analysis Tools
 
 - [ ] Visualize:
   - Control flow graph (CFG)

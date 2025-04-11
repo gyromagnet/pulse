@@ -47,7 +47,6 @@
     </div>
   </div>
 
-  <div id="pyodideStatus" class="loading-message">Loading Pyodide...</div>
 
   <h1>Pulse Program Parser</h1>
 
@@ -56,9 +55,7 @@
       <div class="editor-block" id="grammar-block">
         <div class="editor-header">
           <h3>Grammar</h3>
-          <div class="example-links">
-            <a href="#" onclick="loadGrammarFile('grammars/bruker.lark')">Reload Grammar</a>
-          </div>
+          <div class="example-links" id="grammarExamples"></div>
         </div>
         <textarea id="grammar"></textarea>
       </div>
@@ -70,10 +67,8 @@
       <div class="editor-block" id="input-block">
         <div class="editor-header">
           <h3>Pulse Code</h3>
-          <div class="example-links">
-            <a href="#" onclick="loadExampleFile('example_code/zg')">zg</a>
-            <a href="#" onclick="loadExampleFile('example_code/hnco_3c_pfg_lek_600_sh_cp')">HNCO</a>
-          </div>
+          <div class="example-links" id="inputExamples"></div>
+
         </div>
         <textarea id="input"></textarea>
       </div>
@@ -91,10 +86,12 @@
         <div>
           <button onclick="App.runParser()">Parse</button>
         </div>
+
       </div>
       <pre id="output"></pre>
       <div class="output-footer">
         <div>
+          <button onclick="exportParseTree()">Export JSON</button>
           <button onclick="collapseAll()">Collapse All</button>
           <button onclick="expandAll()">Expand All</button>
         </div>
@@ -146,13 +143,13 @@
       </div>
 
       <div class="setting-item">
+        <label for="lexerSelect">Lexing Mode</label>
         <select id="lexerSelect">
           <option value="basic">Basic</option>
           <option value="contextual">Contextual</option>
           <option value="dynamic" selected>Dynamic</option>
           <option value="dynamic_complete">Dynamic Complete</option>
         </select>
-        <label for="lexerSelect">Lexing Mode</label>
         <span class="tooltip" data-tooltip="Choose how tokens are matched: basic, contextual, or dynamic."><img
             src="icons/help.svg" alt="Help" width="20" height="20" /></span>
       </div>
@@ -197,48 +194,78 @@
 
   <div class="popover" id="helpPopover">
     <h3>Help & Instructions</h3>
-    <p>This tool allows you to edit a grammar and corresponding input, then visualize the parse tree in real time.</p>
+    <p>This tool is designed to parse and explore <strong>Bruker pulse programs</strong> in
+      the browser.</p>
 
-    <h4><img src="icons/edit.svg" alt="Settings" width="20" height="20" /> Editing</h4>
+    <h4><img src="icons/edit.svg" alt="Edit" width="20" height="20" /> Editing Code & Grammar</h4>
     <ul>
-      <li><strong>Grammar</strong>: Write or paste your Lark grammar here.</li>
-      <li><strong>Pulse Code</strong>: Your input source to parse using the grammar.</li>
-      <li>Drag and drop text files into either editor to quickly load them.</li>
+      <li><strong>Grammar Editor</strong>: Modify the grammar for Bruker pulse code.</li>
+      <li><strong>Pulse Code Editor</strong>: Paste in your own pulse code, or click on <code>zg</code> or
+        <code>HCNO</code> for examples.
+      </li>
+      <li>Drag and drop files directly into either editor.</li>
     </ul>
 
-    <h4><img src="icons/parsing.svg" alt="Settings" width="20" height="20" /> Parsing</h4>
+    <h4><img src="icons/parsing.svg" alt="Parsing" width="20" height="20" /> Parsing Bruker Pulse Code</h4>
     <ul>
-      <li><strong>Run parser</strong>: Press <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>Enter</kbd> or click "Parse".</li>
-      <li>Parsing options (parser type, lexer mode, etc.) are in the <em>Settings</em> panel.</li>
-      <li>Error messages are shown inline if parsing fails.</li>
+      <li>Click <strong>“Parse”</strong> or press <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>Enter</kbd> to run the parser.
+      </li>
+      <li>The parser uses the grammar and generates a full parse tree.</li>
     </ul>
 
-    <h4><img src="icons/tree.svg" alt="Settings" width="20" height="20" /> Parse Tree Interaction</h4>
+    <h4><img src="icons/tree.svg" alt="Tree" width="20" height="20" /> Interactive Parse Tree</h4>
     <ul>
-      <li>Tree nodes are interactive — click to expand/collapse rules.</li>
-      <li>Double-click on:
+      <li><strong>Tree nodes</strong> represent grammar rules and tokens in your pulse code.</li>
+      <li><strong>Click</strong> rule nodes to expand/collapse branches.</li>
+      <li><strong>Hover</strong> over rules/tokens to highlight source code.</li>
+      <li><strong>Select text</strong> in the pulse code editor to highlight corresponding tree nodes.</li>
+      <li><strong>Double-click</strong> in:
         <ul>
-          <li><strong>Input</strong>: Jumps to and highlights corresponding node in the tree.</li>
-          <li><strong>Tree</strong>: Jumps to and highlights corresponding text in input.</li>
+          <li><strong>Editor</strong> – jumps to the tree node.</li>
+          <li><strong>Tree</strong> – jumps to the input text.</li>
         </ul>
       </li>
-      <li><strong>Hover</strong>: Highlights matching tokens or rules in both views.</li>
-      <li><strong>Selecting text</strong> in the input highlights all matching tree nodes.</li>
-      <li><strong>Collapse All</strong> / <strong>Expand All</strong>: Use bottons below parse tree to quickly
-        fold/unfold the entire tree.</li>
+      <li>Use <strong>“Collapse All”</strong> / <strong>“Expand All”</strong> to fold/unfold the tree.</li>
     </ul>
 
     <h4><img src="icons/settings.svg" alt="Settings" width="20" height="20" /> Settings</h4>
     <ul>
-      <li>Accessible form the gear icon in the top right corner.</li>
-      <li>Tree Display Controls</li>
-      <ul>
-        <li><strong>Compress Tree Paths</strong>: Groups single-child rule chains into a compact view.</li>
-        <li><strong>Show Hidden Tokens</strong>: Display or hide tokens prefixed with underscores (_).</li>
-      </ul>
+      <li>Click the gear icon in the top-right to open the Settings Panel.</li>
+      <li>Customize Parse Tree Display:
+        <ul>
+          <li><strong>Compress Tree</strong>: Merge single-rule paths for a cleaner display.</li>
+          <li><strong>Show Hidden Tokens</strong>: Include whitespace/comments if needed.</li>
+        </ul>
+      </li>
+      <li>Advanced Parser Settings:
+        <ul>
+          <li><strong>Parser Type</strong>: Earley (flexible) or LALR (faster, stricter).</li>
+          <li><strong>Lexer Mode</strong>: Dynamic, Contextual, etc.</li>
+          <li><strong>Regex Engine</strong>: Python <code>re</code> or enhanced <code>regex</code>.</li>
+          <li><strong>Strict Mode</strong>: Enforces defined grammar rules.</li>
+          <li><strong>Start Rule</strong>: Entry point for parsing (e.g. <code>pulseprogram</code>).</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h4>Reset & Reload</h4>
+    <ul>
+      <li>Use “Reset Workspace” in settings to clear your workspace and reload defaults.</li>
+      <li>Click example links (e.g. <code>zg</code>, <code>HNCO</code>) to load prebuilt pulse code.</li>
+      <li>Click “Reload Grammar” to reimport the default <code>bruker.lark</code> file.</li>
     </ul>
   </div>
 
+  <div class="popover" id="submitPopover">
+    <h3>Submit Parse Failure</h3>
+    <p>If this is <strong>valid Bruker code</strong> but fails to parse, you can help us improve this tool. We would
+      <strong>really</strong> appreciate it.
+    </p>
+    <p>Click the button below to submit the code as a pre-filled GitHub issue.</p>
+
+    <p><strong>Note:</strong> Your code and grammar will be included publicly in the issue.</p>
+    <button id="submitDownloadBtn">Submit Parsing Failure</button>
+  </div>
 
 
 </body>

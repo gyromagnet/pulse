@@ -1,5 +1,4 @@
 (function () {
-  // --- Utility Module ---
   const Utils = {
     debounce: function (fn, delay) {
       let timeout;
@@ -10,6 +9,191 @@
     },
   };
 
+  const UI = {
+    currentHighlight: null,
+    lastTreeHighlight: null,
+    treeCursorEl: null,
+    errorHighlight: null,
+
+    handleKeyShortcut: function (cm, event) {
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+        App.runParser();
+        event.preventDefault();
+      }
+    },
+    handleMouseMoveOnInput: function (event) {
+      if (!TreeModule.treeNodeList || TreeModule.treeNodeList.length === 0) return;
+      const pos = EditorModule.inputEditor.coordsChar(
+        { left: event.clientX, top: event.clientY },
+        "window"
+      );
+      const index = EditorModule.inputEditor.indexFromPos(pos);
+      UI.highlightTreeNodeFromInput(index);
+    },
+    handleMouseLeaveOnInput: function () {
+      if (UI.hoveredTreeNode && UI.hoveredTreeNode._domElement) {
+        UI.hoveredTreeNode._domElement.classList.remove("highlighted-tree-node");
+        UI.hoveredTreeNode = null;
+      }
+      if (UI.lastTreeHighlight) {
+        UI.lastTreeHighlight.classList.remove("highlighted-tree-node");
+        UI.lastTreeHighlight = null;
+      }
+    },
+    handleDoubleClickOnInput: function () {
+      const cursor = EditorModule.inputEditor.getCursor();
+      const index = EditorModule.inputEditor.indexFromPos(cursor);
+      const match = UI.findDeepestNode(TreeModule.lastParseTree, index);
+      if (match && match._domElement) {
+        // Scroll the focused node into view and highlight it
+        match._domElement.scrollIntoView({ behavior: "smooth", block: "center" });
+        match._domElement.classList.add("selected-tree-node");
+        setTimeout(() => match._domElement.classList.remove("selected-tree-node"), 1000);
+      }
+    },
+    handleCursorActivity: function () {
+      document.querySelectorAll(".selected-tree-node").forEach((el) =>
+        el.classList.remove("selected-tree-node")
+      );
+
+      // Debounce updating the tree cursor for smoother performance.
+      Utils.debounce(UI.updateTreeCursor, 80)();
+
+      // Scroll the currently selected node into view (centered)
+      const selectedNode = document.querySelector(".selected-tree-node");
+      if (selectedNode) {
+        selectedNode.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+
+      const sel = EditorModule.inputEditor.listSelections()[0];
+      if (!sel || sel.empty() || !TreeModule.treeNodeList) return;
+      const fromIdx = EditorModule.inputEditor.indexFromPos(sel.from());
+      const toIdx = EditorModule.inputEditor.indexFromPos(sel.to());
+      const startIdx = Math.min(fromIdx, toIdx);
+      const endIdx = Math.max(fromIdx, toIdx);
+      TreeModule.treeNodeList.forEach((node) => {
+        if (
+          node.start_pos != null &&
+          node.end_pos != null &&
+          node._domElement &&
+          node.start_pos >= startIdx &&
+          node.end_pos <= endIdx
+        ) {
+          node._domElement.classList.add("selected-tree-node");
+          // Scroll each selected node into view (centered)
+          node._domElement.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      });
+    },
+    updateTreeCursor: function () {
+      if (UI.treeCursorEl) {
+        UI.treeCursorEl.remove();
+        UI.treeCursorEl = null;
+      }
+      if (!TreeModule.lastParseTree) return;
+      const cursorPos = EditorModule.inputEditor.getCursor();
+      const cursorIndex = EditorModule.inputEditor.indexFromPos(cursorPos);
+      const focusedNode = UI.findDeepestNode(TreeModule.lastParseTree, cursorIndex);
+      if (focusedNode && focusedNode._domElement) {
+        document
+          .querySelectorAll(".highlighted-tree-node-cursor")
+          .forEach((el) => el.classList.remove("highlighted-tree-node-cursor"));
+
+        const showHidden = document.getElementById("showHiddenCheckbox").checked;
+
+        if (focusedNode.hidden && !showHidden) {
+          const cursorLine = document.createElement("div");
+          cursorLine.className = "tree-cursor tree-cursor-line";
+          focusedNode._domElement.appendChild(cursorLine);
+          UI.treeCursorEl = cursorLine;
+        } else {
+          focusedNode._domElement.classList.add("highlighted-tree-node-cursor");
+          if (
+            focusedNode.type === "token" &&
+            focusedNode._domElement &&
+            focusedNode._domElement.querySelector(".tree-text")
+          ) {
+
+            if (focusedNode._textWrapper && focusedNode.start_pos != null) {
+              const cursorEl = document.createElement("span");
+              cursorEl.className = "tree-cursor";
+
+              // Estimate position based on monospace character width
+              const charWidth = 7; // tweak based on your font and zoom level
+              const offset = Math.max(0, cursorIndex - focusedNode.start_pos);
+              cursorEl.style.left = `${offset * charWidth + 12}px`; // 12px accounts for leading space/quote
+
+              focusedNode._textWrapper.appendChild(cursorEl);
+              UI.treeCursorEl = cursorEl;
+            }
+          }
+        }
+        focusedNode._domElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    },
+    highlightTreeNodeFromInput: function (index) {
+      if (!TreeModule.lastParseTree) return;
+      const match = UI.findDeepestNode(TreeModule.lastParseTree, index);
+      if (!match || !match._domElement) return;
+      if (UI.lastTreeHighlight) {
+        UI.lastTreeHighlight.classList.remove("highlighted-tree-node");
+      }
+      match._domElement.classList.add("highlighted-tree-node");
+      UI.lastTreeHighlight = match._domElement;
+    },
+    findDeepestNode: function (node, index) {
+      if (node.start_pos == null || node.end_pos == null) return null;
+      if (index < node.start_pos || index >= node.end_pos) return null;
+      let bestMatch = node;
+      if (node.children) {
+        node.children.forEach((child) => {
+          const match = UI.findDeepestNode(child, index);
+          if (match) bestMatch = match;
+        });
+      }
+      return bestMatch;
+    },
+    highlightRange: function (start, end) {
+      if (UI.currentHighlight) {
+        UI.currentHighlight.clear();
+        UI.currentHighlight = null;
+      }
+      if (!isNaN(start) && !isNaN(end)) {
+        const from = EditorModule.inputEditor.posFromIndex(start);
+        const to = EditorModule.inputEditor.posFromIndex(end);
+        UI.currentHighlight = EditorModule.inputEditor.markText(from, to, {
+          className: "highlighted-text",
+        });
+      }
+    },
+    clearHighlight: function () {
+      if (UI.currentHighlight) {
+        UI.currentHighlight.clear();
+        UI.currentHighlight = null;
+      }
+    },
+    showToast: function (message, type = "success", duration = 3000) {
+      const toast = document.getElementById("toast");
+      if (!toast) return;
+      toast.textContent = message;
+      toast.className = "toast show " + type;
+      toast.classList.remove("hidden");
+      setTimeout(() => {
+        toast.classList.remove("show");
+        setTimeout(() => toast.classList.add("hidden"), 300);
+      }, duration);
+
+      if (type === "error") {
+        const submitPopover = document.getElementById("submitPopover");
+        submitPopover.style.display = "block";
+      }
+
+    },
+    toggleSettings: function () {
+      const popover = document.getElementById("settingsPopover");
+      popover.style.display = popover.style.display === "block" ? "none" : "block";
+    },
+  };
   // --- Helper Function for Token Formatting ---
   function formatTokenValue(value) {
     // If the token value only contains whitespace, replace all newline characters with the return symbol.
@@ -20,46 +204,111 @@
     return value;
   }
 
-  // --- Pyodide Module ---
-  const PyodideModule = {
-    pyodide: null,
+  const WorkerModule = {
+    worker: null,
     isReady: false,
+    parseButton: null,
+
+    init: function () {
+      this.worker = new Worker("parser_worker.js");
+
+      this.worker.onerror = (e) => {
+        console.error("Worker error:", e);
+        UI.showToast("❌ Failed to load parser worker", "error");
+      };
+      this.parseButton = document.querySelector(".output-header button");
+
+      if (this.parseButton) {
+        this.parseButton.disabled = true;
+        this.parseButton.textContent = "Loading...";
+      }
+
+      this.worker.onmessage = (event) => {
+        const { type, tree, message } = event.data;
+
+        if (type === "ready") {
+          this.isReady = true;
+          UI.showToast("Pyodide loaded", "success");
+
+          if (this.parseButton) {
+            this.parseButton.disabled = false;
+            this.parseButton.textContent = "Parse";
+          }
+
+        } else if (type === "success") {
+          TreeModule.lastParseTree = tree;
+          TreeModule.renderAndDisplayTree(tree);
+          UI.showToast("Parse complete", "success");
+          _lastGrammar = EditorModule.grammarEditor.getValue();
+          _lastInput = EditorModule.inputEditor.getValue();
+        } else if (type === "error") {
+          const output = document.getElementById("output");
+          output.className = "error";
+          output.textContent = message;
+
+          const match = message.match(/line (\d+)[^\d]*column (\d+)/i);
+          if (match) {
+            const [_, lineStr, colStr] = match;
+            const line = parseInt(lineStr, 10) - 1;
+            const col = parseInt(colStr, 10) - 1;
+            const from = { line, ch: col };
+            const to = { line, ch: col + 3 };
+            EditorModule.inputEditor.setCursor(from);
+            EditorModule.inputEditor.scrollIntoView(from, 100);
+            if (UI.errorHighlight) UI.errorHighlight.clear();
+            UI.errorHighlight = EditorModule.inputEditor.markText(from, to, {
+              className: "highlighted-error-text"
+            });
+          }
+
+          // Reset to force reparse next time
+          _lastGrammar = "";
+          _lastInput = "";
+
+          UI.showToast(message, "error");
+        }
+
+      };
+    },
+
+    parse: function (grammar, text, start, parser, lexer, debug, strict, regex) {
+      this.worker.postMessage({ grammar, text, start, parser, lexer, debug, strict, regex });
+    }
   };
+
 
   // --- Editor Module ---
   const EditorModule = {
     grammarEditor: null,
     inputEditor: null,
-    initEditors: function () {
-      this.grammarEditor = CodeMirror.fromTextArea(
-        document.getElementById("grammar"),
-        { lineNumbers: true, mode: "text/plain" }
-      );
-      this.inputEditor = CodeMirror.fromTextArea(
-        document.getElementById("input"),
-        { lineNumbers: true, mode: "text/plain" }
-      );
+
+    initEditors: async function () {
+      const loadEditor = (el) =>
+        new Promise((resolve) => {
+          const editor = CodeMirror.fromTextArea(el, {
+            lineNumbers: true,
+            mode: "text/plain",
+          });
+          resolve(editor);
+        });
+
+      const grammarEl = document.getElementById("grammar");
+      const inputEl = document.getElementById("input");
+
+      this.grammarEditor = await loadEditor(grammarEl);
+      this.inputEditor = await loadEditor(inputEl);
+
       this.setupDragAndDrop(this.grammarEditor, "Grammar");
       this.setupDragAndDrop(this.inputEditor, "Input");
 
-      // Event listeners for key shortcuts and cursor/mouse events
+      // Events
       this.grammarEditor.on("keydown", UI.handleKeyShortcut);
       this.inputEditor.on("keydown", UI.handleKeyShortcut);
-      this.inputEditor.getWrapperElement().addEventListener(
-        "mousemove",
-        UI.handleMouseMoveOnInput
-      );
-      this.inputEditor.getWrapperElement().addEventListener(
-        "mouseleave",
-        UI.handleMouseLeaveOnInput
-      );
-      this.inputEditor.getWrapperElement().addEventListener(
-        "dblclick",
-        UI.handleDoubleClickOnInput
-      );
+      this.inputEditor.getWrapperElement().addEventListener("mousemove", UI.handleMouseMoveOnInput);
+      this.inputEditor.getWrapperElement().addEventListener("mouseleave", UI.handleMouseLeaveOnInput);
+      this.inputEditor.getWrapperElement().addEventListener("dblclick", UI.handleDoubleClickOnInput);
       this.inputEditor.on("cursorActivity", UI.handleCursorActivity);
 
-      // Save changes to local storage
       this.grammarEditor.on("change", SettingsModule.saveToLocalStorage);
       this.inputEditor.on("change", SettingsModule.saveToLocalStorage);
     },
@@ -264,185 +513,6 @@
     },
   };
 
-  // --- UI Module ---
-  const UI = {
-    currentHighlight: null,
-    lastTreeHighlight: null,
-    treeCursorEl: null,
-    handleKeyShortcut: function (cm, event) {
-      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-        App.runParser();
-        event.preventDefault();
-      }
-    },
-    handleMouseMoveOnInput: function (event) {
-      if (!TreeModule.treeNodeList || TreeModule.treeNodeList.length === 0) return;
-      const pos = EditorModule.inputEditor.coordsChar(
-        { left: event.clientX, top: event.clientY },
-        "window"
-      );
-      const index = EditorModule.inputEditor.indexFromPos(pos);
-      UI.highlightTreeNodeFromInput(index);
-    },
-    handleMouseLeaveOnInput: function () {
-      if (UI.hoveredTreeNode && UI.hoveredTreeNode._domElement) {
-        UI.hoveredTreeNode._domElement.classList.remove("highlighted-tree-node");
-        UI.hoveredTreeNode = null;
-      }
-      if (UI.lastTreeHighlight) {
-        UI.lastTreeHighlight.classList.remove("highlighted-tree-node");
-        UI.lastTreeHighlight = null;
-      }
-    },
-    handleDoubleClickOnInput: function () {
-      const cursor = EditorModule.inputEditor.getCursor();
-      const index = EditorModule.inputEditor.indexFromPos(cursor);
-      const match = UI.findDeepestNode(TreeModule.lastParseTree, index);
-      if (match && match._domElement) {
-        // Scroll the focused node into view and highlight it
-        match._domElement.scrollIntoView({ behavior: "smooth", block: "center" });
-        match._domElement.classList.add("selected-tree-node");
-        setTimeout(() => match._domElement.classList.remove("selected-tree-node"), 1000);
-      }
-    },
-    handleCursorActivity: function () {
-      document.querySelectorAll(".selected-tree-node").forEach((el) =>
-        el.classList.remove("selected-tree-node")
-      );
-
-      // Debounce updating the tree cursor for smoother performance.
-      Utils.debounce(UI.updateTreeCursor, 80)();
-
-      // Scroll the currently selected node into view (centered)
-      const selectedNode = document.querySelector(".selected-tree-node");
-      if (selectedNode) {
-        selectedNode.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-
-      const sel = EditorModule.inputEditor.listSelections()[0];
-      if (!sel || sel.empty() || !TreeModule.treeNodeList) return;
-      const fromIdx = EditorModule.inputEditor.indexFromPos(sel.from());
-      const toIdx = EditorModule.inputEditor.indexFromPos(sel.to());
-      const startIdx = Math.min(fromIdx, toIdx);
-      const endIdx = Math.max(fromIdx, toIdx);
-      TreeModule.treeNodeList.forEach((node) => {
-        if (
-          node.start_pos != null &&
-          node.end_pos != null &&
-          node._domElement &&
-          node.start_pos >= startIdx &&
-          node.end_pos <= endIdx
-        ) {
-          node._domElement.classList.add("selected-tree-node");
-          // Scroll each selected node into view (centered)
-          node._domElement.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-      });
-    },
-    updateTreeCursor: function () {
-      if (UI.treeCursorEl) {
-        UI.treeCursorEl.remove();
-        UI.treeCursorEl = null;
-      }
-      if (!TreeModule.lastParseTree) return;
-      const cursorPos = EditorModule.inputEditor.getCursor();
-      const cursorIndex = EditorModule.inputEditor.indexFromPos(cursorPos);
-      const focusedNode = UI.findDeepestNode(TreeModule.lastParseTree, cursorIndex);
-      if (focusedNode && focusedNode._domElement) {
-        document
-          .querySelectorAll(".highlighted-tree-node-cursor")
-          .forEach((el) => el.classList.remove("highlighted-tree-node-cursor"));
-
-        const showHidden = document.getElementById("showHiddenCheckbox").checked;
-
-        if (focusedNode.hidden && !showHidden) {
-          const cursorLine = document.createElement("div");
-          cursorLine.className = "tree-cursor tree-cursor-line";
-          focusedNode._domElement.appendChild(cursorLine);
-          UI.treeCursorEl = cursorLine;
-        } else {
-          focusedNode._domElement.classList.add("highlighted-tree-node-cursor");
-          if (
-            focusedNode.type === "token" &&
-            focusedNode._domElement &&
-            focusedNode._domElement.querySelector(".tree-text")
-          ) {
-
-            if (focusedNode._textWrapper && focusedNode.start_pos != null) {
-              const cursorEl = document.createElement("span");
-              cursorEl.className = "tree-cursor";
-
-              // Estimate position based on monospace character width
-              const charWidth = 7; // tweak based on your font and zoom level
-              const offset = Math.max(0, cursorIndex - focusedNode.start_pos);
-              cursorEl.style.left = `${offset * charWidth + 12}px`; // 12px accounts for leading space/quote
-
-              focusedNode._textWrapper.appendChild(cursorEl);
-              UI.treeCursorEl = cursorEl;
-            }
-          }
-        }
-        focusedNode._domElement.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-    },
-    highlightTreeNodeFromInput: function (index) {
-      if (!TreeModule.lastParseTree) return;
-      const match = UI.findDeepestNode(TreeModule.lastParseTree, index);
-      if (!match || !match._domElement) return;
-      if (UI.lastTreeHighlight) {
-        UI.lastTreeHighlight.classList.remove("highlighted-tree-node");
-      }
-      match._domElement.classList.add("highlighted-tree-node");
-      UI.lastTreeHighlight = match._domElement;
-    },
-    findDeepestNode: function (node, index) {
-      if (node.start_pos == null || node.end_pos == null) return null;
-      if (index < node.start_pos || index >= node.end_pos) return null;
-      let bestMatch = node;
-      if (node.children) {
-        node.children.forEach((child) => {
-          const match = UI.findDeepestNode(child, index);
-          if (match) bestMatch = match;
-        });
-      }
-      return bestMatch;
-    },
-    highlightRange: function (start, end) {
-      if (UI.currentHighlight) {
-        UI.currentHighlight.clear();
-        UI.currentHighlight = null;
-      }
-      if (!isNaN(start) && !isNaN(end)) {
-        const from = EditorModule.inputEditor.posFromIndex(start);
-        const to = EditorModule.inputEditor.posFromIndex(end);
-        UI.currentHighlight = EditorModule.inputEditor.markText(from, to, {
-          className: "highlighted-text",
-        });
-      }
-    },
-    clearHighlight: function () {
-      if (UI.currentHighlight) {
-        UI.currentHighlight.clear();
-        UI.currentHighlight = null;
-      }
-    },
-    showToast: function (message, type = "success", duration = 3000) {
-      const toast = document.getElementById("toast");
-      toast.textContent = message;
-      toast.className = "toast show " + type;
-      toast.classList.remove("hidden");
-      setTimeout(() => {
-        toast.classList.remove("show");
-        setTimeout(() => {
-          toast.classList.add("hidden");
-        }, 300);
-      }, duration);
-    },
-    toggleSettings: function () {
-      const popover = document.getElementById("settingsPopover");
-      popover.style.display = popover.style.display === "block" ? "none" : "block";
-    },
-  };
 
   // --- Settings Module ---
   const SettingsModule = {
@@ -576,12 +646,12 @@
 
   // --- Main Application ---
   const App = {
-    runParser: async function () {
-
-      if (!PyodideModule.isReady) {
-        UI.showToast("⏳ Pyodide is still loading, please wait...", "error");
+    runParser: function () {
+      if (!WorkerModule.isReady) {
+        UI.showToast("Pyodide is still loading...", "error");
         return;
       }
+
       if (!App.hasContentChanged()) {
         console.log("No changes detected. Skipping parse.");
         return;
@@ -595,43 +665,20 @@
       const debug = document.getElementById("debugCheckbox").checked;
       const strict = document.getElementById("strictCheckbox").checked;
       const regex = document.getElementById("regexSelect").value === "regex";
-      const output = document.getElementById("output");
-      output.textContent = "Parsing...";
 
-      try {
-        const pyCode = `
-    parse_input(
-        ${JSON.stringify(grammar)},
-        ${JSON.stringify(text)},
-        ${JSON.stringify(start)},
-        ${JSON.stringify(parserType)},
-        ${JSON.stringify(lexer)},
-        ${debug ? "True" : "False"},
-        ${strict ? "True" : "False"},
-        ${regex ? "True" : "False"}
-    )
-        `;
-        const result = await PyodideModule.pyodide.runPythonAsync(pyCode);
-        TreeModule.lastParseTree = JSON.parse(result);
-        UI.showToast("✅ Parse complete", "success");
-        _lastGrammar = grammar;
-        _lastInput = text;
-        TreeModule.renderAndDisplayTree(TreeModule.lastParseTree);
-      } catch (e) {
-        output.className = "error";
-        output.textContent = e.message || e;
-        UI.showToast("❌ Parsing failed", "error");
-      } finally {
-      }
+      document.getElementById("output").textContent = "Parsing...";
 
+      WorkerModule.parse(grammar, text, start, parserType, lexer, debug, strict, regex);
     },
+
     hasContentChanged: function () {
       const currentGrammar = EditorModule.grammarEditor.getValue();
       const currentInput = EditorModule.inputEditor.getValue();
       return currentGrammar !== _lastGrammar || currentInput !== _lastInput;
     },
     initialize: async function () {
-      EditorModule.initEditors();
+
+      await EditorModule.initEditors();
       window.addEventListener("resize", EditorModule.resizeEditors);
 
       // Call the resize function once after initialization.
@@ -694,6 +741,33 @@
         SettingsModule.toggleSettings();
       });
 
+      async function populateExampleMenus() {
+        const res = await fetch("examples.json");
+        const data = await res.json();
+
+        const grammarContainer = document.getElementById("grammarExamples");
+        grammarContainer.innerHTML = "";
+        data.grammars.forEach(g => {
+          const link = document.createElement("a");
+          link.href = "#";
+          link.textContent = g.name;
+          link.onclick = () => loadGrammarFile(g.file);
+          grammarContainer.appendChild(link);
+        });
+
+        const inputContainer = document.getElementById("inputExamples");
+        inputContainer.innerHTML = "";
+        data.inputs.forEach(i => {
+          const link = document.createElement("a");
+          link.href = "#";
+          link.textContent = i.name;
+          link.onclick = () => loadExampleFile(i.file);
+          inputContainer.appendChild(link);
+        });
+      }
+
+      await populateExampleMenus();
+
       // Expose file loading functions globally
       window.loadExampleFile = function (path) {
         fetch(path)
@@ -737,7 +811,38 @@
         SettingsModule.resetWorkspace();
       };
 
+      window.exportParseTree = function () {
+        const tree = TreeModule.lastParseTree;
+        if (!tree) {
+          UI.showToast("Nothing to export – parse something first.", "error");
+          return;
+        }
+
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(tree, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", "parse_tree.json");
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        document.body.removeChild(downloadAnchor);
+        UI.showToast("Parse tree exported.", "success");
+      }
+
       SettingsModule.loadFromLocalStorage();
+
+      document.getElementById("submitDownloadBtn").addEventListener("click", () => {
+        const grammar = EditorModule.grammarEditor.getValue();
+        const input = EditorModule.inputEditor.getValue();
+        const body = encodeURIComponent(
+          `### What happened?\nParser failed on valid Bruker pulse code.\n\n### Pulse Code\n\`\`\`\n${input}\n\`\`\`\n\n### Grammar Used\n\`\`\`\n${grammar}\n\`\`\`\n\n### Additional Notes\n(Please include context or expectations if available.)`
+        );
+        const title = encodeURIComponent("Parser failed on valid Bruker code");
+        const repo = "gyromagnet/pulse";
+        const url = `https://github.com/${repo}/issues/new?title=${title}&body=${body}`;
+
+        window.open(url, "_blank");
+      });
+
 
       // Help toggle
       document.getElementById("helpToggle").addEventListener("click", () => {
@@ -789,31 +894,11 @@
   window.App = App;
   window.SettingsModule = SettingsModule;
 
-  // --- Initialization with Error Handlers ---
-  async function init() {
-    document.getElementById("pyodideStatus").textContent = "Loading Pyodide...";
-    try {
-      PyodideModule.pyodide = await loadPyodide();
-      await PyodideModule.pyodide.loadPackage("micropip");
-      await PyodideModule.pyodide.runPythonAsync("import micropip");
-      await PyodideModule.pyodide.runPythonAsync("await micropip.install('regex')");
-      await PyodideModule.pyodide.runPythonAsync("await micropip.install('lark')");
-    } catch (e) {
-      handleLoadError("Failed to load Pyodide. Please refresh or try again later.");
-      return;
-    }
-    try {
-      const pyCode = await (await fetch("parse_runner.py")).text();
-      await PyodideModule.pyodide.runPythonAsync(pyCode);
-      document.getElementById("pyodideStatus").classList.add("hidden");
-      PyodideModule.isReady = true;
-      await App.initialize();
-    } catch (e) {
-      handleLoadError("Pyodide initialized but failed setting up the parser.");
-      return;
-    }
-  }
-  init();
+  document.addEventListener("DOMContentLoaded", async () => {
+    UI.showToast("Loading Pyodide...");
+    WorkerModule.init();
+    await App.initialize();
+  });
 
 
 })();

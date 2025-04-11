@@ -688,3 +688,61 @@ pre#output {
 .tooltip:hover::after {
   opacity: 1;
 }
+
+.highlighted-error-text {
+  background: rgba(255, 0, 0, 0.1);
+  border-bottom: 2px dotted red;
+}
+
+@media (max-width: 768px) {
+  .split-pane {
+    flex-direction: column;
+  }
+
+  .editor-container {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 10px;
+  }
+
+  .resizer-vertical {
+    height: 10px;
+    width: 100%;
+    cursor: row-resize;
+  }
+
+  .output-container {
+    padding: 0 10px;
+    height: auto;
+    max-height: 300px;
+  }
+
+  .popover {
+    width: 95%;
+    max-width: 95%;
+    right: 2.5%;
+  }
+
+  .icon-group {
+    top: 5px;
+    right: 5px;
+  }
+
+  .editor-header h3 {
+    font-size: 1em;
+  }
+
+  .example-links a {
+    font-size: 0.8em;
+  }
+
+  h1 {
+    font-size: 1.4em;
+  }
+}
+
+#submitPopover {
+  top: 100px;
+  right: 20px;
+  width: 350px;
+}
