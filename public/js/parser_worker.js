@@ -1,3 +1,5 @@
+/* eslint-env worker */
+
 let pyodide = null;
 let isReady = false;
 
@@ -45,7 +47,9 @@ self.onmessage = async (event) => {
     let message = err.message || String(err);
     try {
       message = pyodide.runPython(`str(${err.name}) + ": " + str(${err})`);
-    } catch (_) { }
+    } catch (_err) {
+      // intentionally ignored
+    }
     self.postMessage({ type: 'error', message });
   }
 };

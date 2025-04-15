@@ -1,3 +1,6 @@
+public/example_code/
+public/grammars/
+
 *.egg-info
 *.ipynb
 .git/
