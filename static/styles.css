@@ -176,7 +176,7 @@ pre#output {
 }
 
 .collapse-toggle::before {
-  content: "▼";
+  content: '▼';
   display: inline-block;
   width: 1em;
   margin-left: 0.5px;
@@ -185,19 +185,19 @@ pre#output {
   z-index: 1;
 }
 
-.collapsed>.tree-label::before {
+.collapsed > .tree-label::before {
   transform: rotate(-90deg);
 }
 
 .tree-label:not(.collapse-toggle)::before {
-  content: "";
+  content: '';
 }
 
 .tree-children {
   margin-left: 0.5em;
 }
 
-.collapsed>.tree-children {
+.collapsed > .tree-children {
   display: none;
 }
 
@@ -207,7 +207,7 @@ pre#output {
 }
 
 .tree-node::before {
-  content: "";
+  content: '';
   position: absolute;
   top: 0.7em;
   left: -0.2em;
@@ -217,7 +217,7 @@ pre#output {
 }
 
 .tree-node:not(.last-child)::after {
-  content: "";
+  content: '';
   position: absolute;
   top: -0.5em;
   height: 100%;
@@ -226,7 +226,7 @@ pre#output {
 }
 
 .tree-node.last-child::after {
-  content: "";
+  content: '';
   position: absolute;
   top: -0.5em;
   height: 1.2em;
@@ -243,7 +243,6 @@ pre#output {
 .root-node {
   padding-left: 0;
 }
-
 
 /* Drag Hover Styles */
 .CodeMirror.drag-hover {
@@ -290,7 +289,6 @@ pre#output {
 }
 
 @keyframes blink {
-
   0%,
   50% {
     opacity: 1;
@@ -412,7 +410,6 @@ pre#output {
   height: 0;
 }
 
-
 .popover {
   position: absolute;
   background: #fff;
@@ -484,13 +481,13 @@ pre#output {
 }
 
 #settingsPopover select,
-#settingsPopover input[type="text"] {
+#settingsPopover input[type='text'] {
   margin-left: 0.5em;
   flex-grow: 1;
   min-width: 120px;
 }
 
-#settingsPopover input[type="checkbox"] {
+#settingsPopover input[type='checkbox'] {
   margin: 0;
 }
 
@@ -547,7 +544,9 @@ pre#output {
   overflow: hidden;
   max-height: 1000px;
   /* large enough to fit content */
-  transition: max-height 0.3s ease, opacity 0.3s ease;
+  transition:
+    max-height 0.3s ease,
+    opacity 0.3s ease;
   opacity: 1;
 }
 
@@ -558,7 +557,7 @@ pre#output {
 
 /* Collapse indicator for collapsible settings */
 .collapsible-heading::before {
-  content: "▼";
+  content: '▼';
   display: inline-block;
   width: 1em;
   margin-left: 0.5px;
@@ -613,7 +612,6 @@ pre#output {
 }
 
 @keyframes blink {
-
   0%,
   40% {
     opacity: 1;
@@ -624,7 +622,6 @@ pre#output {
     opacity: 0;
   }
 }
-
 
 .setting-item {
   display: flex;
@@ -640,9 +637,9 @@ pre#output {
   flex-grow: 1;
 }
 
-.setting-item input[type="checkbox"],
+.setting-item input[type='checkbox'],
 .setting-item select,
-.setting-item input[type="text"] {
+.setting-item input[type='text'] {
   flex-shrink: 0;
   min-width: 120px;
 }
@@ -654,7 +651,6 @@ pre#output {
   flex-shrink: 0;
   cursor: help;
 }
-
 
 .tooltip img {
   width: 14px;

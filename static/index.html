@@ -4,24 +4,24 @@
 <head>
   <meta charset="UTF-8" />
   <title>Pulse Program Parser</title>
-  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
 
-  <link rel="preload" href="styles.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" href="styles.css" as="style" onload="this.onload=null;this.rel='stylesheet'" />
   <noscript>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css" />
   </noscript>
 
   <script>
     window.handleLoadError = function (message) {
-      const errorDiv = document.createElement("div");
-      errorDiv.style.position = "fixed";
-      errorDiv.style.top = "0";
-      errorDiv.style.left = "0";
-      errorDiv.style.right = "0";
-      errorDiv.style.padding = "1em";
-      errorDiv.style.background = "red";
-      errorDiv.style.color = "white";
-      errorDiv.style.zIndex = "10000";
+      const errorDiv = document.createElement('div');
+      errorDiv.style.position = 'fixed';
+      errorDiv.style.top = '0';
+      errorDiv.style.left = '0';
+      errorDiv.style.right = '0';
+      errorDiv.style.padding = '1em';
+      errorDiv.style.background = 'red';
+      errorDiv.style.color = 'white';
+      errorDiv.style.zIndex = '10000';
       errorDiv.textContent = message;
       document.body.appendChild(errorDiv);
     };
@@ -32,9 +32,6 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css"
     integrity="sha512-uf06llspW44/LZpHzHT6qBOIVODjWtv4MxCricRxkzvopAlSWnTf6hpZTFxuuZcuNE9CBQhqE0Seu1CoRk84nQ=="
     crossorigin="anonymous" referrerpolicy="no-referrer" />
-
-
-
 </head>
 
 <body>
@@ -46,7 +43,6 @@
       <img src="icons/settings.svg" alt="Settings" width="20" height="20" />
     </div>
   </div>
-
 
   <h1>Pulse Program Parser</h1>
 
@@ -68,7 +64,6 @@
         <div class="editor-header">
           <h3>Pulse Code</h3>
           <div class="example-links" id="inputExamples"></div>
-
         </div>
         <textarea id="input"></textarea>
       </div>
@@ -86,7 +81,6 @@
         <div>
           <button onclick="App.runParser()">Parse</button>
         </div>
-
       </div>
       <pre id="output"></pre>
       <div class="output-footer">
@@ -104,7 +98,7 @@
     crossorigin="anonymous" referrerpolicy="no-referrer"
     onerror="handleLoadError('Failed to load. Please check your network connection.')"></script>
 
-  <script src="ide.js"></script>
+  <script type="module" src="js/ide.js"></script>
   <div id="toast" class="toast hidden"></div>
 
   <div class="popover" id="settingsPopover">
@@ -117,8 +111,6 @@
       <span class="tooltip" data-tooltip="Collapse single-rule chains in the parse tree for a cleaner view."><img
           src="icons/help.svg" alt="Help" width="20" height="20" /></span>
     </div>
-
-
 
     <div class="setting-item">
       <label for="showHiddenCheckbox">Include Hidden Tokens</label>
@@ -194,13 +186,13 @@
 
   <div class="popover" id="helpPopover">
     <h3>Help & Instructions</h3>
-    <p>This tool is designed to parse and explore <strong>Bruker pulse programs</strong> in
-      the browser.</p>
+    <p>This tool is designed to parse and explore <strong>Bruker pulse programs</strong> in the browser.</p>
 
     <h4><img src="icons/edit.svg" alt="Edit" width="20" height="20" /> Editing Code & Grammar</h4>
     <ul>
       <li><strong>Grammar Editor</strong>: Modify the grammar for Bruker pulse code.</li>
-      <li><strong>Pulse Code Editor</strong>: Paste in your own pulse code, or click on <code>zg</code> or
+      <li>
+        <strong>Pulse Code Editor</strong>: Paste in your own pulse code, or click on <code>zg</code> or
         <code>HCNO</code> for examples.
       </li>
       <li>Drag and drop files directly into either editor.</li>
@@ -208,7 +200,8 @@
 
     <h4><img src="icons/parsing.svg" alt="Parsing" width="20" height="20" /> Parsing Bruker Pulse Code</h4>
     <ul>
-      <li>Click <strong>“Parse”</strong> or press <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>Enter</kbd> to run the parser.
+      <li>
+        Click <strong>“Parse”</strong> or press <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>Enter</kbd> to run the parser.
       </li>
       <li>The parser uses the grammar and generates a full parse tree.</li>
     </ul>
@@ -219,7 +212,8 @@
       <li><strong>Click</strong> rule nodes to expand/collapse branches.</li>
       <li><strong>Hover</strong> over rules/tokens to highlight source code.</li>
       <li><strong>Select text</strong> in the pulse code editor to highlight corresponding tree nodes.</li>
-      <li><strong>Double-click</strong> in:
+      <li>
+        <strong>Double-click</strong> in:
         <ul>
           <li><strong>Editor</strong> – jumps to the tree node.</li>
           <li><strong>Tree</strong> – jumps to the input text.</li>
@@ -231,13 +225,15 @@
     <h4><img src="icons/settings.svg" alt="Settings" width="20" height="20" /> Settings</h4>
     <ul>
       <li>Click the gear icon in the top-right to open the Settings Panel.</li>
-      <li>Customize Parse Tree Display:
+      <li>
+        Customize Parse Tree Display:
         <ul>
           <li><strong>Compress Tree</strong>: Merge single-rule paths for a cleaner display.</li>
           <li><strong>Show Hidden Tokens</strong>: Include whitespace/comments if needed.</li>
         </ul>
       </li>
-      <li>Advanced Parser Settings:
+      <li>
+        Advanced Parser Settings:
         <ul>
           <li><strong>Parser Type</strong>: Earley (flexible) or LALR (faster, stricter).</li>
           <li><strong>Lexer Mode</strong>: Dynamic, Contextual, etc.</li>
@@ -258,18 +254,19 @@
 
   <div class="popover" id="submitPopover">
     <h3>Submit Parse Failure</h3>
-    <p>If this is <strong>valid Bruker code</strong> but fails to parse, you can help us improve this tool. We would
+    <p>
+      If this is <strong>valid Bruker code</strong> but fails to parse, you can help us improve this tool. We would
       <strong>really</strong> appreciate it.
     </p>
     <p>Click the button below to submit the code in a GitHub issue.</p>
-    <p>A GitHub issue will open in a new tab. The full grammar + code has been copied to your clipboard — just paste it
-      into the issue body.</p>
+    <p>
+      A GitHub issue will open in a new tab. The full grammar + code has been copied to your clipboard — just paste it
+      into the issue body.
+    </p>
 
     <p><strong>Note:</strong> Your code and grammar will be included publicly in the issue.</p>
     <button id="submitDownloadBtn">Submit Parsing Failure</button>
   </div>
-
-
 </body>
 
 </html>

@@ -1,3 +1,4 @@
+# ruff: noqa: F704, PLE1142, E402
 import micropip
 
 await micropip.install("regex")

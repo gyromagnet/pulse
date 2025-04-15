@@ -1,0 +1,36 @@
+{
+  "name": "parser_demo",
+  "version": "1.0.0",
+  "description": "This is a web-based tool that leverages [Pyodide](https://pyodide.org/) to parse Bruker pulse code using [Lark](https://github.com/lark-parser/lark) as its parsing engine. It provides an interactive interface to visualize parse trees and inspect how the input code is tokenized and structured.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "dev": "live-server public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com-gyromagnet:gyromagnet/pulse.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@eslint/css": "^0.6.0",
+    "@eslint/js": "^9.24.0",
+    "@eslint/json": "^0.11.0",
+    "@eslint/markdown": "^6.3.0",
+    "eslint": "^9.24.0",
+    "eslint-config-prettier": "^10.1.2",
+    "globals": "^16.0.0",
+    "live-server": "^1.2.2",
+    "prettier": "^3.5.3",
+    "stylelint": "^16.18.0",
+    "stylelint-config-standard": "^38.0.0"
+  }
+}
