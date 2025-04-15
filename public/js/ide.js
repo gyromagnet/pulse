@@ -203,7 +203,7 @@
     parseButton: null,
 
     init: function () {
-      this.worker = new Worker('parser_worker.js');
+      this.worker = new Worker('js/parser_worker.js');
 
       this.worker.onerror = (e) => {
         console.error('Worker error:', e);
