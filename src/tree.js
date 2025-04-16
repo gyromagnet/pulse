@@ -66,13 +66,17 @@ export const TreeModule = {
     labelRow.className = 'tree-label';
     wrapper.addEventListener('mouseenter', (e) => {
       e.stopPropagation();
-      UI.highlightRange(node.startPos, node.endPos);
+      if (node.startPos != null && node.endPos != null) {
+        UI.highlightRange(node.startPos, node.endPos);
+      }
     });
     wrapper.addEventListener('mouseleave', UI.clearHighlight);
 
     labelRow.addEventListener('mouseenter', (e) => {
       e.stopPropagation();
-      UI.highlightRange(node.startPos, node.endPos);
+      if (node.startPos != null && node.endPos != null) {
+        UI.highlightRange(node.startPos, node.endPos);
+      }
     });
     labelRow.addEventListener('mouseleave', UI.clearHighlight);
 

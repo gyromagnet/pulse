@@ -47,9 +47,9 @@ self.onmessage = async (event) => {
         ${JSON.stringify(start)},
         ${JSON.stringify(parser)},
         ${JSON.stringify(lexer)},
-        ${debug ? 'True' : 'False'},
-        ${strict ? 'True' : 'False'},
-        ${regex ? 'True' : 'False'}
+        debug=${debug ? 'True' : 'False'},
+        strict=${strict ? 'True' : 'False'},
+        regex=${regex ? 'True' : 'False'}
       )
     `);
     self.postMessage({ type: 'success', tree: JSON.parse(result) });

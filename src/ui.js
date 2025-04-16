@@ -161,6 +161,7 @@ export const UI = {
   },
 
   highlightRange: function (start, end) {
+    if (start == null || end == null || start >= end) return;
     const builder = new RangeSetBuilder();
     builder.add(start, end, Decoration.mark({ class: 'highlighted-text' }));
     EditorModule.inputEditor.dispatch({
@@ -190,11 +191,11 @@ export const UI = {
     }, duration);
 
     if (type === 'error') {
-      getEl('submitPopover').style.display = 'block';
+      getEl('submit-popover').style.display = 'block';
     }
   },
 
   toggleSettings: function () {
-    document.getElementById('settingsPopover').classList.toggle('hidden');
+    document.getElementById('settings-popover').classList.toggle('hidden');
   },
 };

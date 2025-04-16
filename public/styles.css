@@ -93,6 +93,7 @@ h3 {
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: hidden;
   min-width: 300px;
   max-width: 60%;
   width: 50%;
@@ -106,12 +107,23 @@ h3 {
   flex: 1;
 }
 
-#grammar-block textarea,
-#input-block textarea {
-  height: 100% !important;
+#grammar-block,
+#input-block {
+  flex: 1;
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.CodeMirror {
+.grammar-editor,
+.input-editor {
+  flex: 1;
+  overflow: auto;
+  min-height: 100px;
+}
+
+.cm-editor {
   height: 100% !important;
   border: 1px solid #ccc;
 }

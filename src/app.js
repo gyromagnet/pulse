@@ -18,12 +18,12 @@ const App = {
 
     const grammar = EditorModule.getGrammarValue();
     const text = EditorModule.getInputValue();
-    const start = document.getElementById('startInput')?.value || 'start';
-    const parser = document.getElementById('parserSelect')?.value;
-    const lexer = document.getElementById('lexerSelect')?.value;
-    const debug = document.getElementById('debugCheckbox')?.checked;
-    const strict = document.getElementById('strictCheckbox')?.checked;
-    const regex = document.getElementById('regexSelect')?.value === 'regex';
+    const start = document.getElementById('start-input')?.value || 'start';
+    const parser = document.getElementById('parser-select')?.value || 'earley';
+    const lexer = document.getElementById('lexer-select')?.value || 'dynamic';
+    const debug = document.getElementById('debug-checkbox')?.checked || false;
+    const strict = document.getElementById('strict-checkbox')?.checked || false;
+    const regex = document.getElementById('regex-select')?.value === 'regex';
 
     document.getElementById('output').textContent = 'Parsing...';
     WorkerModule.parse(grammar, text, start, parser, lexer, debug, strict, regex);
@@ -122,22 +122,14 @@ const App = {
       // click is not on the "help" popover
       const helpPopover = document.getElementById('help-popover');
       const helpButton = document.getElementById('help-toggle');
-      if (
-        helpPopover?.style.display === 'block' &&
-        !helpPopover.contains(e.target) &&
-        !helpButton.contains(e.target)
-      ) {
+      if (!helpPopover.contains(e.target) && !helpButton.contains(e.target)) {
         helpPopover.classList.add('hidden');
       }
 
       // click is not on the "settings" popover
       const settingsPopover = document.getElementById('settings-popover');
       const settingsButton = document.getElementById('settings-toggle');
-      if (
-        settingsPopover?.style.display === 'block' &&
-        !settingsPopover.contains(e.target) &&
-        !settingsButton.contains(e.target)
-      ) {
+      if (!settingsPopover.contains(e.target) && !settingsButton.contains(e.target)) {
         settingsPopover.classList.add('hidden');
       }
     });
