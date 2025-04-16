@@ -2,17 +2,20 @@
   "grammars": [
     {
       "name": "Bruker Default",
-      "file": "grammars/bruker.lark"
+      "file": "grammars/bruker.lark",
+      "description": "Lark grammar for Bruker pulse programs"
     }
   ],
   "inputs": [
     {
-      "name": "zg",
-      "file": "example_code/zg"
+      "name": "HNCO",
+      "file": "example_code/hnco_3c_pfg_lek_600_sh_cp",
+      "description": "Triple-resonance pulse program"
     },
     {
-      "name": "HNCO",
-      "file": "example_code/hnco_3c_pfg_lek_600_sh_cp"
+      "name": "zg",
+      "file": "example_code/zg",
+      "description": "Standard single-pulse experiment"
     }
   ]
 }

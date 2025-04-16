@@ -1,5 +1,6 @@
 // vite.config.js
 import { defineConfig } from 'vite';
+import path from 'path';
 
 export default defineConfig({
   build: {
@@ -7,8 +8,10 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': '/src',
+      '@': path.resolve(__dirname, './src'),
+      '@py': path.resolve(__dirname, './src/py'),
+      '@public': path.resolve(__dirname, './public'),
     },
-    dedupe: ['@codemirror/state', '@codemirror/view', '@codemirror/basic-setup'],
   },
+  dedupe: ['@codemirror/state', '@codemirror/view'],
 });

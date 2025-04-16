@@ -3,33 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <title>Pulse Program Parser</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 
-    <link rel="preload" href="/styles.css" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+    <!-- Styles -->
+    <link
+      rel="preload"
+      href="/styles.css"
+      as="style"
+      onload="this.onload=null;this.rel='stylesheet'"
+    />
     <noscript>
       <link rel="stylesheet" href="/styles.css" />
     </noscript>
-
-    <script>
-      window.handleLoadError = function (message) {
-        const errorDiv = document.createElement('div');
-        errorDiv.style.position = 'fixed';
-        errorDiv.style.top = '0';
-        errorDiv.style.left = '0';
-        errorDiv.style.right = '0';
-        errorDiv.style.padding = '1em';
-        errorDiv.style.background = 'red';
-        errorDiv.style.color = 'white';
-        errorDiv.style.zIndex = '10000';
-        errorDiv.textContent = message;
-        document.body.appendChild(errorDiv);
-      };
-    </script>
-
-    <script
-      src="https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.js"
-      onerror="handleLoadError('Failed to load. Please check your network connection.')"
-    ></script>
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css"
@@ -37,9 +22,21 @@
       crossorigin="anonymous"
       referrerpolicy="no-referrer"
     />
+
+    <!-- Load error fallback -->
+    <script>
+      window.handleLoadError = function (message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.textContent = message;
+        errorDiv.style.cssText =
+          'position:fixed;top:0;left:0;right:0;padding:1em;background:red;color:white;z-index:10000;';
+        document.body.appendChild(errorDiv);
+      };
+    </script>
   </head>
 
   <body>
+    <!-- Top-right icons -->
     <div class="icon-group">
       <div id="help-toggle" title="Help">
         <img src="icons/help.svg" alt="Help" width="20" height="20" />
@@ -51,12 +48,14 @@
 
     <h1>Pulse Program Parser</h1>
 
+    <!-- Split Layout -->
     <div class="split-pane">
+      <!-- Left: editors -->
       <div class="editor-container" id="left-pane">
         <div class="editor-block" id="grammar-block">
           <div class="editor-header">
-            <h3>Grammar</h3>
-            <div class="example-links" id="grammarExamples"></div>
+            <h3>grammar</h3>
+            <div class="example-links" id="grammar-examples"></div>
           </div>
           <textarea id="grammar"></textarea>
         </div>
@@ -67,78 +66,75 @@
 
         <div class="editor-block" id="input-block">
           <div class="editor-header">
-            <h3>Pulse Code</h3>
-            <div class="example-links" id="inputExamples"></div>
+            <h3>pulse code</h3>
+            <div class="example-links" id="input-examples"></div>
           </div>
           <textarea id="input"></textarea>
         </div>
         <div class="editor-footer"></div>
       </div>
 
+      <!-- vertical resizer -->
       <div class="resizer-vertical" id="column-divider">
         <div class="grip-icon-vertical"></div>
       </div>
 
-      <div id="parseStatus" class="status-bar"></div>
+      <!--; Right: output -->
       <div class="output-container">
         <div class="output-header">
-          <h3>Parse Tree Output:</h3>
+          <h3>parse tree; Output:</h3>
           <div>
-            <button id="parse-button">Parse</button>
+            <button id="parse-button">parse</button>
           </div>
         </div>
         <pre id="output"></pre>
         <div class="output-footer">
           <div>
-            <button id="exportJson-button">Export JSON</button>
-            <button id="collapseAll-button">Collapse All</button>
-            <button id="expandAll-button">Expand All</button>
+            <button id="export-json-button">export json</button>
+            <button id="collapse-all-button">collapse all</button>
+            <button id="expand-all-button">expand all</button>
           </div>
         </div>
       </div>
     </div>
 
-    <script
-      src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js"
-      integrity="sha512-8RnEqURPUc5aqFEN04aQEiPlSAdE0jlFS/9iGgUyNtwFnSKCXhmB6ZTNl7LnDtDWKabJIASzXrzD0K+LYexU9g=="
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-      onerror="handleLoadError('Failed to load. Please check your network connection.')"
-    ></script>
-
-    <script type="module" src="/src/app.js"></script>
-
+    <!-- toast messages -->
     <div id="toast" class="toast hidden"></div>
 
-    <div class="popover" id="settings-popover">
-      <h3>Settings</h3>
+    <!-- popovers -->
+    <div class="popover hidden" id="settings-popover">
+      <h3>settings</h3>
 
-      <h4>Display</h4>
+      <h4>display</h4>
       <div class="setting-item">
-        <label for="compressCheckbox">Compact Tree View</label>
-        <input type="checkbox" id="compressCheckbox" />
-        <span class="tooltip" data-tooltip="Collapse single-rule chains in the parse tree for a cleaner view."
+        <label for="compress-checkbox">compact tree view</label>
+        <input type="checkbox" id="compress-checkbox" />
+        <span
+          class="tooltip"
+          data-tooltip="Collapse single-rule chains in the parse tree for a cleaner view."
           ><img src="icons/help.svg" alt="Help" width="20" height="20"
         /></span>
       </div>
 
       <div class="setting-item">
-        <label for="showHiddenCheckbox">Include Hidden Tokens</label>
-        <input type="checkbox" id="showHiddenCheckbox" />
-        <span class="tooltip" data-tooltip="Show tokens like whitespace and punctuation that are usually hidden."
+        <label for="show-hidden-checkbox">include hidden tokens</label>
+        <input type="checkbox" id="show-hidden-checkbox" />
+        <span
+          class="tooltip"
+          data-tooltip="Show tokens like whitespace and punctuation that are usually hidden."
           ><img src="icons/help.svg" alt="Help" width="20" height="20"
         /></span>
       </div>
 
-      <h4 id="advanced-toggle" class="collapsible-heading">Advanced Settings</h4>
-      <div id="advancedSettings" class="collapsible-section hidden">
-        <h4>Parser Options</h4>
+      <h4 id="advanced-toggle" class="collapsible-heading">advanced settings</h4>
+      <div id="advanced-settings" class="collapsible-section hidden">
+        <h4>parser options</h4>
 
         <div class="setting-item">
-          <label for="parserSelect">Parser Algorithm</label>
-          <select id="parserSelect">
-            <option value="lalr">LALR</option>
-            <option value="earley" selected>Earley</option>
+          <label for="parser-select">parser algorithm</label>
+          <select id="parser-select">
+            <option value="lalr">lalr</option>
+            <option value="earley" selected>earley</option>
           </select>
           <span
             class="tooltip"
@@ -148,141 +144,178 @@
         </div>
 
         <div class="setting-item">
-          <label for="lexerSelect">Lexing Mode</label>
-          <select id="lexerSelect">
-            <option value="basic">Basic</option>
-            <option value="contextual">Contextual</option>
-            <option value="dynamic" selected>Dynamic</option>
-            <option value="dynamic_complete">Dynamic Complete</option>
+          <label for="lexer-select">lexing mode</label>
+          <select id="lexer-select">
+            <option value="basic">basic</option>
+            <option value="contextual">contextual</option>
+            <option value="dynamic" selected>dynamic</option>
+            <option value="dynamic_complete">dynamic complete</option>
           </select>
-          <span class="tooltip" data-tooltip="Choose how tokens are matched: basic, contextual, or dynamic."
+          <span
+            class="tooltip"
+            data-tooltip="Choose how tokens are matched: basic, contextual, or dynamic."
             ><img src="icons/help.svg" alt="Help" width="20" height="20"
           /></span>
         </div>
 
         <div class="setting-item">
-          <label for="regexSelect">Regex Engine</label>
-          <select id="regexSelect">
+          <label for="regex-select">regex engine</label>
+          <select id="regex-select">
             <option value="re">re (built-in)</option>
             <option value="regex" selected>regex (enhanced)</option>
           </select>
-          <span class="tooltip" data-tooltip="Use Python's built-in 're' or the more powerful 'regex' engine."
+          <span
+            class="tooltip"
+            data-tooltip="Use Python's built-in 're' or the more powerful 'regex' engine."
             ><img src="icons/help.svg" alt="Help" width="20" height="20"
           /></span>
         </div>
 
         <div class="setting-item">
-          <label for="debugCheckbox">Enable Debug Mode</label>
-          <input type="checkbox" id="debugCheckbox" />
-          <span class="tooltip" data-tooltip="Print detailed logs from the parser. For development only."
+          <label for="debug-checkbox">enable debug mode</label>
+          <input type="checkbox" id="debug-checkbox" />
+          <span
+            class="tooltip"
+            data-tooltip="Print detailed logs from the parser. For development only."
             ><img src="icons/help.svg" alt="Help" width="20" height="20"
           /></span>
         </div>
 
         <div class="setting-item">
-          <label for="strictCheckbox">Strict Grammar Mode</label>
-          <input type="checkbox" id="strictCheckbox" />
-          <span class="tooltip" data-tooltip="Enforce strict grammar validation and reject undefined rules."
+          <label for="strict-checkbox">strict grammar mode</label>
+          <input type="checkbox" id="strict-checkbox" />
+          <span
+            class="tooltip"
+            data-tooltip="Enforce strict grammar validation and reject undefined rules."
             ><img src="icons/help.svg" alt="Help" width="20" height="20"
           /></span>
         </div>
 
         <div class="setting-item">
-          <label for="startInput">Starting Rule</label>
-          <input type="text" id="startInput" value="pulseprogram" />
-          <span class="tooltip" data-tooltip="The name of the rule to start parsing from. Default is usually 'start'."
+          <label for="start-input">starting rule</label>
+          <input type="text" id="start-input" value="pulseprogram" />
+          <span
+            class="tooltip"
+            data-tooltip="The name of the rule to start parsing from. Default is usually 'start'."
             ><img src="icons/help.svg" alt="Help" width="20" height="20"
           /></span>
         </div>
       </div>
 
       <div class="settings-footer">
-        <button id="reset-workspace-button">Reset Workspace</button>
+        <button id="reset-workspace-button">reset workspace</button>
       </div>
     </div>
 
-    <div class="popover" id="help-popover">
-      <h3>Help & Instructions</h3>
-      <p>This tool is designed to parse and explore <strong>Bruker pulse programs</strong> in the browser.</p>
+    <div class="popover hidden" id="help-popover">
+      <h3>help & instructions</h3>
+      <p>
+        this tool is designed to parse and explore <strong>bruker pulse programs</strong> in the
+        browser.
+      </p>
 
-      <h4><img src="icons/edit.svg" alt="Edit" width="20" height="20" /> Editing Code & Grammar</h4>
+      <h4><img src="icons/edit.svg" alt="Edit" width="20" height="20" /> editing code & grammar</h4>
       <ul>
-        <li><strong>Grammar Editor</strong>: Modify the grammar for Bruker pulse code.</li>
+        <li><strong>grammar; Editor</strong>: modify the grammar for bruker pulse code.</li>
         <li>
-          <strong>Pulse Code Editor</strong>: Paste in your own pulse code, or click on <code>zg</code> or
-          <code>HCNO</code> for examples.
+          <strong>pulse code; Editor</strong>: paste in your own pulse code, or click on
+          <code>zg</code> or <code>hcno</code> for examples.
         </li>
-        <li>Drag and drop files directly into either editor.</li>
+        <li>drag and drop files directly into either editor.</li>
       </ul>
 
-      <h4><img src="icons/parsing.svg" alt="Parsing" width="20" height="20" /> Parsing Bruker Pulse Code</h4>
+      <h4>
+        <img src="icons/parsing.svg" alt="Parsing" width="20" height="20" /> parsing bruker pulse
+        code
+      </h4>
       <ul>
         <li>
-          Click <strong>“Parse”</strong> or press <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>Enter</kbd> to run the parser.
+          click <strong>“parse”</strong> or press <kbd>ctrl</kbd>/<kbd>cmd</kbd> +
+          <kbd>enter</kbd> to run the parser.
         </li>
-        <li>The parser uses the grammar and generates a full parse tree.</li>
+        <li>the parser uses the grammar and generates a full parse tree.</li>
       </ul>
 
-      <h4><img src="icons/tree.svg" alt="Tree" width="20" height="20" /> Interactive Parse Tree</h4>
+      <h4><img src="icons/tree.svg" alt="Tree" width="20" height="20" /> interactive parse tree</h4>
       <ul>
-        <li><strong>Tree nodes</strong> represent grammar rules and tokens in your pulse code.</li>
-        <li><strong>Click</strong> rule nodes to expand/collapse branches.</li>
-        <li><strong>Hover</strong> over rules/tokens to highlight source code.</li>
-        <li><strong>Select text</strong> in the pulse code editor to highlight corresponding tree nodes.</li>
+        <li><strong>tree nodes</strong> represent grammar rules and tokens in your pulse code.</li>
+        <li><strong>click</strong> rule nodes to expand/collapse branches.</li>
+        <li><strong>hover</strong> over rules/tokens to highlight source code.</li>
         <li>
-          <strong>Double-click</strong> in:
+          <strong>select text</strong> in the pulse code editor to highlight corresponding tree
+          nodes.
+        </li>
+        <li>
+          <strong>double-click</strong>; in:
           <ul>
-            <li><strong>Editor</strong> – jumps to the tree node.</li>
-            <li><strong>Tree</strong> – jumps to the input text.</li>
-          </ul>
-        </li>
-        <li>Use <strong>“Collapse All”</strong> / <strong>“Expand All”</strong> to fold/unfold the tree.</li>
-      </ul>
-
-      <h4><img src="icons/settings.svg" alt="Settings" width="20" height="20" /> Settings</h4>
-      <ul>
-        <li>Click the gear icon in the top-right to open the Settings Panel.</li>
-        <li>
-          Customize Parse Tree Display:
-          <ul>
-            <li><strong>Compress Tree</strong>: Merge single-rule paths for a cleaner display.</li>
-            <li><strong>Show Hidden Tokens</strong>: Include whitespace/comments if needed.</li>
+            <li><strong>editor</strong> – jumps to the tree node.</li>
+            <li><strong>tree</strong> – jumps to the input text.</li>
           </ul>
         </li>
         <li>
-          Advanced Parser Settings:
+          use <strong>“collapse all”</strong> / <strong>“expand all”</strong> to fold/unfold the
+          tree.
+        </li>
+      </ul>
+
+      <h4><img src="icons/settings.svg" alt="Settings" width="20" height="20" /> settings</h4>
+      <ul>
+        <li>click the gear icon in the top-right to open the settings panel.</li>
+        <li>
+          customize parse tree; Display:
           <ul>
-            <li><strong>Parser Type</strong>: Earley (flexible) or LALR (faster, stricter).</li>
-            <li><strong>Lexer Mode</strong>: Dynamic, Contextual, etc.</li>
-            <li><strong>Regex Engine</strong>: Python <code>re</code> or enhanced <code>regex</code>.</li>
-            <li><strong>Strict Mode</strong>: Enforces defined grammar rules.</li>
-            <li><strong>Start Rule</strong>: Entry point for parsing (e.g. <code>pulseprogram</code>).</li>
+            <li><strong>compress; Tree</strong>: merge single-rule paths for a cleaner display.</li>
+            <li><strong>show hidden; Tokens</strong>: include whitespace/comments if needed.</li>
+          </ul>
+        </li>
+        <li>
+          advanced parser; Settings:
+          <ul>
+            <li><strong>parser; Type</strong>: earley (flexible) or lalr (faster, stricter).</li>
+            <li>
+              <strong>lexer; Engine</strong>: python <code>re</code> or enhanced <code>regex</code>.
+            </li>
+            <li><strong>strict; Mode</strong>: enforces defined grammar rules.</li>
+            <li>
+              <strong>start; Rule</strong>: entry point for parsing (e.g.
+              <code>pulseprogram</code>).
+            </li>
           </ul>
         </li>
       </ul>
 
-      <h4>Reset & Reload</h4>
+      <h4>reset & reload</h4>
       <ul>
-        <li>Use “Reset Workspace” in settings to clear your workspace and reload defaults.</li>
-        <li>Click example links (e.g. <code>zg</code>, <code>HNCO</code>) to load prebuilt pulse code.</li>
-        <li>Click “Reload Grammar” to reimport the default <code>bruker.lark</code> file.</li>
+        <li>use “reset workspace” in settings to clear your workspace and reload defaults.</li>
+        <li>
+          click example links (e.g. <code>zg</code>, <code>hnco</code>) to load prebuilt pulse code.
+        </li>
+        <li>click “reload grammar” to reimport the default <code>bruker.lark</code> file.</li>
       </ul>
     </div>
 
-    <div class="popover" id="submit-popover">
-      <h3>Submit Parse Failure</h3>
+    <div class="popover hidden" id="submit-popover">
+      <h3>submit parse failure</h3>
       <p>
-        If this is <strong>valid Bruker code</strong> but fails to parse, you can help us improve this tool. We would
-        <strong>really</strong> appreciate it.
+        if this is <strong>valid bruker code</strong> but fails to parse, you can help us improve
+        this tool. we would <strong>really</strong> appreciate it.
       </p>
-      <p>Click the button below to submit the code in a GitHub issue.</p>
+      <p>click the button below to submit the code in a github issue.</p>
       <p>
-        A GitHub issue will open in a new tab. The full grammar + code has been copied to your clipboard — just paste it
-        into the issue body.
+        a github issue will open in a new tab. the full grammar + code has been copied to your
+        clipboard — just paste it into the issue body.
       </p>
-
-      <p><strong>Note:</strong> Your code and grammar will be included publicly in the issue.</p>
-      <button id="submit-download-button">Submit Parsing Failure</button>
+      ;
+      <p><strong>Note:</strong> your code and grammar will be included publicly in the issue.</p>
+      <button id="submit-download-button">submit parsing failure</button>
     </div>
+
+    <!-- scripts (deferred load) -->
+    <script
+      src="https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.js"
+      onerror="handleLoadError('Failed to load Pyodide.')"
+      async
+    ></script>
+    <script type="module" src="/src/app.js"></script>
   </body>
 </html>

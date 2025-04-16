@@ -1,6 +1,6 @@
-import { EditorState, EditorSelection, StateEffect, StateField } from '@codemirror/state';
-import { basicSetup } from '@codemirror/basic-setup';
-import { Decoration, EditorView } from '@codemirror/view';
+import { basicSetup } from 'codemirror';
+import { EditorState, StateEffect, StateField, EditorSelection } from '@codemirror/state';
+import { EditorView, Decoration } from '@codemirror/view';
 import { UI } from './ui.js';
 import { SettingsModule } from './settings.js';
 
@@ -11,23 +11,14 @@ export const EditorModule = {
   initEditors: async function () {
     const grammarTextArea = document.getElementById('grammar');
     const inputTextArea = document.getElementById('input');
-
     if (!grammarTextArea || !inputTextArea) {
-      console.error("Could not find 'grammar' or 'input' textarea elements.");
+      console.error("Missing 'grammar' or 'input' elements");
       return;
     }
 
-    const grammarContainer = document.createElement('div');
-    grammarContainer.className = 'cm-editor grammar-editor';
-    grammarTextArea.parentNode.insertBefore(grammarContainer, grammarTextArea);
-    grammarTextArea.style.display = 'none';
+    const grammarContainer = this._setupEditorContainer(grammarTextArea, 'grammar-editor');
+    const inputContainer = this._setupEditorContainer(inputTextArea, 'input-editor');
 
-    const inputContainer = document.createElement('div');
-    inputContainer.className = 'cm-editor input-editor';
-    inputTextArea.parentNode.insertBefore(inputContainer, inputTextArea);
-    inputTextArea.style.display = 'none';
-
-    // Create the grammar editor.
     this.grammarEditor = new EditorView({
       state: EditorState.create({
         doc: grammarTextArea.value,
@@ -36,25 +27,22 @@ export const EditorModule = {
       parent: grammarContainer,
     });
 
-    // Create the input editor with an update listener that calls UI.handleCursorActivity on selection changes.
     this.inputEditor = new EditorView({
       state: EditorState.create({
         doc: inputTextArea.value,
         extensions: [
           basicSetup,
-          EditorModule.highlightField,
+          this.highlightField,
           EditorView.updateListener.of((update) => {
-            if (update.selectionSet) {
-              UI.handleCursorActivity();
-            }
+            if (update.selectionSet) UI.handleCursorActivity();
           }),
         ],
       }),
       parent: inputContainer,
     });
 
-    this.setupDragAndDrop(this.grammarEditor, grammarContainer, 'Grammar');
-    this.setupDragAndDrop(this.inputEditor, inputContainer, 'Input');
+    this._setupDragAndDrop(this.grammarEditor, grammarContainer, 'Grammar');
+    this._setupDragAndDrop(this.inputEditor, inputContainer, 'Input');
 
     grammarContainer.addEventListener('keydown', UI.handleKeyShortcut);
     inputContainer.addEventListener('keydown', UI.handleKeyShortcut);
@@ -62,7 +50,15 @@ export const EditorModule = {
     SettingsModule.loadFromLocalStorage();
   },
 
-  setupDragAndDrop: function (editorView, container, label) {
+  _setupEditorContainer(textArea, className) {
+    const container = document.createElement('div');
+    container.className = `cm-editor ${className}`;
+    textArea.parentNode.insertBefore(container, textArea);
+    textArea.style.display = 'none';
+    return container;
+  },
+
+  _setupDragAndDrop(editorView, container, label) {
     container.addEventListener('dragover', (e) => {
       e.preventDefault();
       container.classList.add('drag-hover');
@@ -74,7 +70,7 @@ export const EditorModule = {
       e.preventDefault();
       container.classList.remove('drag-hover');
       const file = e.dataTransfer.files[0];
-      if (file && file.type.startsWith('text')) {
+      if (file?.type.startsWith('text')) {
         const reader = new FileReader();
         reader.onload = (event) => {
           editorView.dispatch({
@@ -83,53 +79,50 @@ export const EditorModule = {
         };
         reader.readAsText(file);
       } else {
-        alert('Only text files can be dropped into the ' + label + ' editor.');
+        alert(`Only text files can be dropped into the ${label} editor.`);
       }
     });
   },
 
-  resizeEditors: function () {
+  resizeEditors() {
     const container = document.querySelector('.editor-container');
     if (!container) return;
-
     const grammarContainer = container.querySelector('.grammar-editor');
     const inputContainer = container.querySelector('.input-editor');
     if (!grammarContainer || !inputContainer) return;
 
     const containerHeight = container.clientHeight;
-    const divider = document.getElementById('vertical-divider');
-    const dividerHeight = divider ? divider.offsetHeight : 0;
+    const dividerHeight = document.getElementById('vertical-divider')?.offsetHeight || 0;
+    let grammarHeight = parseFloat(localStorage.getItem('grammarHeight'));
+    let inputHeight = parseFloat(localStorage.getItem('inputHeight'));
 
-    let savedGrammarHeight = parseFloat(localStorage.getItem('grammarHeight'));
-    let savedInputHeight = parseFloat(localStorage.getItem('inputHeight'));
-
-    if (isNaN(savedGrammarHeight) || isNaN(savedInputHeight)) {
-      savedGrammarHeight = (containerHeight - dividerHeight) / 2;
-      savedInputHeight = containerHeight - dividerHeight - savedGrammarHeight;
+    if (isNaN(grammarHeight) || isNaN(inputHeight)) {
+      grammarHeight = (containerHeight - dividerHeight) / 2;
+      inputHeight = containerHeight - dividerHeight - grammarHeight;
     }
 
-    grammarContainer.style.height = savedGrammarHeight + 'px';
-    inputContainer.style.height = savedInputHeight + 'px';
+    grammarContainer.style.height = `${grammarHeight}px`;
+    inputContainer.style.height = `${inputHeight}px`;
   },
 
-  getGrammarValue: function () {
+  getGrammarValue() {
     return this.grammarEditor.state.doc.toString();
   },
 
-  getInputValue: function () {
+  getInputValue() {
     return this.inputEditor.state.doc.toString();
   },
 
-  setValue: function (editorView, newValue) {
+  setValue(editorView, newValue) {
     editorView.dispatch({
       changes: { from: 0, to: editorView.state.doc.length, insert: newValue },
     });
   },
 
-  // --- Highlighting Extension Setup ---
   setHighlightEffect: StateEffect.define({
     map: (value, mapping) => value.map(mapping.changes),
   }),
+
   highlightField: StateField.define({
     create() {
       return Decoration.none;
@@ -145,30 +138,38 @@ export const EditorModule = {
     provide: (f) => EditorView.decorations.from(f),
   }),
 
-  scrollToPos: function (editorView, pos, options = { y: 'center' }) {
+  scrollToPos(editorView, pos, options = { y: 'center' }) {
     const coords = editorView.coordsAtPos(pos);
     if (!coords) return;
     const scrollDOM = editorView.scrollDOM;
     const viewportHeight = scrollDOM.clientHeight;
     let targetScroll;
-    if (options.y === 'center') {
-      targetScroll = coords.top - viewportHeight / 2 + (coords.bottom - coords.top) / 2;
-    } else if (options.y === 'start') {
-      targetScroll = coords.top;
-    } else if (options.y === 'end') {
-      targetScroll = coords.bottom - viewportHeight;
-    } else if (options.y === 'nearest') {
-      const currentScroll = scrollDOM.scrollTop;
-      if (coords.top < currentScroll || coords.bottom > currentScroll + viewportHeight) {
+
+    switch (options.y) {
+      case 'center':
         targetScroll = coords.top - viewportHeight / 2 + (coords.bottom - coords.top) / 2;
+        break;
+      case 'start':
+        targetScroll = coords.top;
+        break;
+      case 'end':
+        targetScroll = coords.bottom - viewportHeight;
+        break;
+      case 'nearest': {
+        const currentScroll = scrollDOM.scrollTop;
+        if (coords.top < currentScroll || coords.bottom > currentScroll + viewportHeight) {
+          targetScroll = coords.top - viewportHeight / 2 + (coords.bottom - coords.top) / 2;
+        }
+        break;
       }
     }
+
     if (targetScroll !== undefined) {
       scrollDOM.scrollTop = targetScroll;
     }
   },
 
-  setCursorAndScroll: function (pos) {
+  setCursorAndScroll(pos) {
     if (this.inputEditor) {
       this.inputEditor.dispatch({
         selection: EditorSelection.single(pos),

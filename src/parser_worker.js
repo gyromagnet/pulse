@@ -4,7 +4,15 @@
 let pyodide = null;
 let isReady = false;
 
-async function loadPyodideAndPackages() {
+async function safeStringifyError(err) {
+  try {
+    return pyodide.runPython(`str(${err.name}) + ": " + str(${err})`);
+  } catch {
+    return err.message || String(err);
+  }
+}
+
+async function initializePyodide() {
   importScripts('https://cdn.jsdelivr.net/pyodide/v0.27.5/full/pyodide.js');
   pyodide = await loadPyodide();
   await pyodide.loadPackage('micropip');
@@ -21,7 +29,7 @@ async function loadPyodideAndPackages() {
   self.postMessage({ type: 'ready' });
 }
 
-loadPyodideAndPackages();
+initializePyodide();
 
 self.onmessage = async (event) => {
   if (!isReady) {
@@ -30,6 +38,7 @@ self.onmessage = async (event) => {
   }
 
   const { grammar, text, start, parser, lexer, debug, strict, regex } = event.data;
+
   try {
     const result = await pyodide.runPythonAsync(`
       parse_input(
@@ -45,12 +54,7 @@ self.onmessage = async (event) => {
     `);
     self.postMessage({ type: 'success', tree: JSON.parse(result) });
   } catch (err) {
-    let message = err.message || String(err);
-    try {
-      message = pyodide.runPython(`str(${err.name}) + ": " + str(${err})`);
-    } catch {
-      // intentionally ignored
-    }
+    const message = await safeStringifyError(err);
     self.postMessage({ type: 'error', message });
   }
 };

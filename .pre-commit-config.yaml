@@ -9,3 +9,37 @@ repos:
       # Run the formatter.
       - id: ruff-format
         args: [./src/py]
+
+  - repo: local
+    hooks:
+      - id: eslint
+        args:
+          [
+            ".",
+            "--config",
+            "eslint.config.js",
+            "--ext",
+            ".js,.mjs,.cjs,.ts,.tsx",
+          ]
+        name: ESLint
+        entry: eslint
+        language: system
+        files: \.(js|mjs|cjs|jsx|ts|tsx|json|md)$
+
+  - repo: local
+    hooks:
+      - id: stylelint
+        args: ["--config", "./stylelint.config.js", "**/*.{css,scss,html,tsx}"]
+        name: stylelint
+        entry: stylelint
+        language: system
+        files: \.(css|scss|html|tsx)$
+
+  - repo: local
+    hooks:
+      - id: prettier
+        args: ["--config", "./.prettierrc", "--write"]
+        name: prettier
+        entry: prettier
+        language: system
+        files: ^(index.html|eslint.config.js|package.json|stylelint.config.js|tsconfig.json|vite.config.js)|((src/|public/).*\.(js|mjs|cjs|jsx|ts|tsx|css|scss|json|html))$

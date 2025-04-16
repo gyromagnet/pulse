@@ -5,17 +5,16 @@ export const TreeModule = {
   lastParseTree: null,
   treeNodeList: [],
 
-  formatTokenValue: function (value) {
-    if (value.trim() === '') {
-      return value.replace(/\n/g, '↵');
-    }
-    return value;
+  formatTokenValue(value) {
+    return value.trim() === '' ? value.replace(/\n/g, '↵') : value;
   },
 
-  renderAndDisplayTree: function (tree) {
-    document.querySelectorAll('.selected-tree-node').forEach((el) => el.classList.remove('selected-tree-node'));
-    const compress = document.getElementById('compressCheckbox').checked;
-    const showHidden = document.getElementById('showHiddenCheckbox').checked;
+  renderAndDisplayTree(tree) {
+    document
+      .querySelectorAll('.selected-tree-node')
+      .forEach((el) => el.classList.remove('selected-tree-node'));
+    const compress = document.getElementById('compressCheckbox')?.checked;
+    const showHidden = document.getElementById('showHiddenCheckbox')?.checked;
     const treeData = compress ? this.compressTree(tree) : tree;
     const output = document.getElementById('output');
     output.className = '';
@@ -27,71 +26,64 @@ export const TreeModule = {
     this.collectTreeNodes(treeData);
   },
 
-  compressTree: function (node) {
+  compressTree(node) {
     if (node.type !== 'rule') return node;
     let nameChain = [node.name];
     let current = node;
-    while (current.children && current.children.length === 1 && current.children[0].type === 'rule') {
+    while (current.children?.length === 1 && current.children[0].type === 'rule') {
       current = current.children[0];
       nameChain.push(current.name);
     }
     const compressedChildren = current.children.map(this.compressTree.bind(this));
-    const childStart = compressedChildren.map((c) => c.start_pos).filter((p) => p != null);
-    const childEnd = compressedChildren.map((c) => c.end_pos).filter((p) => p != null);
-    const start_pos = Math.min(...childStart, node.start_pos ?? Infinity);
-    const end_pos = Math.max(...childEnd, current.end_pos ?? -1);
+    const childStart = compressedChildren.map((c) => c.startPos).filter((p) => p != null);
+    const childEnd = compressedChildren.map((c) => c.endPos).filter((p) => p != null);
+    const startPos = Math.min(...childStart, node.startPos ?? Infinity);
+    const endPos = Math.max(...childEnd, current.endPos ?? -1);
     return {
       type: 'rule',
       name: nameChain.join(' > '),
       children: compressedChildren,
-      start_pos,
-      end_pos,
+      startPos,
+      endPos,
     };
   },
 
-  collectTreeNodes: function (node) {
-    if (node && node.start_pos != null && node.end_pos != null && node._domElement) {
+  collectTreeNodes(node) {
+    if (node?.startPos != null && node.endPos != null && node._domElement) {
       this.treeNodeList.push(node);
     }
-    if (node.children) {
-      node.children.forEach((child) => this.collectTreeNodes(child));
-    }
+    node.children?.forEach((child) => this.collectTreeNodes(child));
   },
 
-  renderTree: function (node, depth = 0, isLast = true, showHidden = false) {
+  renderTree(node, depth = 0, isLast = true, showHidden = false) {
     const wrapper = document.createElement('div');
     wrapper.className = 'tree-node ' + (isLast ? 'last-child' : '');
-    const startPos = node.start_pos ?? null;
-    const endPos = node.end_pos ?? null;
-    wrapper._startPos = startPos;
-    wrapper._endPos = endPos;
+    wrapper._startPos = node.startPos;
+    wrapper._endPos = node.endPos;
     node._domElement = wrapper;
 
     const labelRow = document.createElement('div');
     labelRow.className = 'tree-label';
     wrapper.addEventListener('mouseenter', (e) => {
       e.stopPropagation();
-      UI.highlightRange(startPos, endPos);
+      UI.highlightRange(node.startPos, node.endPos);
     });
-    wrapper.addEventListener('mouseleave', () => {
-      UI.clearHighlight();
-    });
+    wrapper.addEventListener('mouseleave', UI.clearHighlight);
+
     labelRow.addEventListener('mouseenter', (e) => {
       e.stopPropagation();
-      UI.highlightRange(startPos, endPos);
+      UI.highlightRange(node.startPos, node.endPos);
     });
-    labelRow.addEventListener('mouseleave', () => {
-      UI.clearHighlight();
-    });
+    labelRow.addEventListener('mouseleave', UI.clearHighlight);
 
-    if (node.type === 'rule' && node.children && node.children.length > 0) {
+    if (node.type === 'rule' && node.children?.length) {
       labelRow.classList.add('collapse-toggle');
       const label = document.createElement('span');
       label.className = 'tree-rule';
       const parts = node.name.split(' > ');
-      parts.forEach((part, i) => {
+      for (let i = 0; i < parts.length; i++) {
         const span = document.createElement('span');
-        span.textContent = part;
+        span.textContent = parts[i];
         label.appendChild(span);
         if (i < parts.length - 1) {
           const sep = document.createElement('span');
@@ -99,9 +91,10 @@ export const TreeModule = {
           sep.className = 'tree-rule-separator';
           label.appendChild(sep);
         }
-      });
+      }
       labelRow.appendChild(label);
       wrapper.appendChild(labelRow);
+
       const childrenContainer = document.createElement('div');
       childrenContainer.className = 'tree-children';
       node.children.forEach((child, index) => {
@@ -109,6 +102,7 @@ export const TreeModule = {
         childrenContainer.appendChild(this.renderTree(child, depth + 1, childIsLast, showHidden));
       });
       wrapper.appendChild(childrenContainer);
+
       labelRow.addEventListener('click', (e) => {
         e.stopPropagation();
         wrapper.classList.toggle('collapsed');
@@ -134,12 +128,13 @@ export const TreeModule = {
       valueWrapper.appendChild(value);
       node._textElement = value;
       node._textWrapper = valueWrapper;
-      // Double-click: jump to corresponding editor position.
+
       value.addEventListener('dblclick', () => {
-        if (node.start_pos != null) {
-          EditorModule.setCursorAndScroll(node.start_pos);
+        if (node.startPos != null) {
+          EditorModule.setCursorAndScroll(node.startPos);
         }
       });
+
       tokenWrapper.appendChild(valueWrapper);
       labelRow.appendChild(tokenWrapper);
       wrapper.appendChild(labelRow);

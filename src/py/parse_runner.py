@@ -4,11 +4,12 @@ import micropip
 await micropip.install("regex")
 await micropip.install("lark")
 import json
+from typing import Any
 
 from lark import Lark, Token, Tree
 
 
-def tree_to_dict(node):
+def tree_to_dict(node: Tree | Token) -> dict[str, Any] | None:
     if isinstance(node, Tree):
         children = [tree_to_dict(c) for c in node.children]
         child_start = [c["start_pos"] for c in children if c.get("start_pos") is not None]
@@ -32,8 +33,10 @@ def tree_to_dict(node):
     return None
 
 
-def parse_input(grammar, text, start, parser, lexer, debug, strict, regex):
-    parser_instance = Lark(
+def create_parser(
+    grammar: str, start: str, parser: str, lexer: str, *, debug: bool, strict: bool, regex: bool
+) -> Lark:
+    return Lark(
         grammar,
         start=start,
         parser=parser,
@@ -44,5 +47,19 @@ def parse_input(grammar, text, start, parser, lexer, debug, strict, regex):
         keep_all_tokens=True,
         propagate_positions=True,
     )
+
+
+def parse_input(
+    grammar: str,
+    text: str,
+    start: str,
+    parser: str,
+    lexer: str,
+    *,
+    debug: bool,
+    strict: bool,
+    regex: bool,
+) -> str:
+    parser_instance = create_parser(grammar, start, parser, lexer, debug=debug, strict=strict, regex=regex)
     tree = parser_instance.parse(text)
     return json.dumps(tree_to_dict(tree))
