@@ -12,14 +12,19 @@ from lark import Lark, Token, Tree
 def tree_to_dict(node: Tree | Token) -> dict[str, Any] | None:
     if isinstance(node, Tree):
         children = [tree_to_dict(c) for c in node.children]
-        child_start = [c["startPos"] for c in children if c.get("startPos") is not None]
-        child_end = [c["endPos"] for c in children if c.get("endPos") is not None]
+        child_start_pos = [c["startPos"] for c in children if c.get("startPos") is not None]
+        child_end_pos = [c["endPos"] for c in children if c.get("endPos") is not None]
+        child_start_line = [c["startLine"] for c in children if c.get("startLine") is not None]
+        child_end_line = [c["endLine"] for c in children if c.get("endLine") is not None]
+
         return {
             "type": "rule",
             "name": node.data,
             "children": children,
-            "startPos": min(child_start) if child_start else None,
-            "endPos": max(child_end) if child_end else None,
+            "startPos": min(child_start_pos) if child_start_pos else None,
+            "endPos": max(child_end_pos) if child_end_pos else None,
+            "startLine": min(child_start_line) if child_start_line else None,
+            "endLine": max(child_end_line) if child_end_line else None,
         }
     if isinstance(node, Token):
         return {
@@ -29,6 +34,8 @@ def tree_to_dict(node: Tree | Token) -> dict[str, Any] | None:
             "hidden": node.type.startswith("_"),
             "startPos": getattr(node, "start_pos", None),
             "endPos": getattr(node, "end_pos", None),
+            "startLine": getattr(node, "start_line", None),
+            "endLine": getattr(node, "end_line", None),
         }
     return None
 

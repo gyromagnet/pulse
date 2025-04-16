@@ -51,7 +51,6 @@ This is a web-based tool that leverages [Pyodide](https://pyodide.org/) to parse
 ### Other Features
 
 - Example grammar and pulse code loaders (loaded dynamically from `examples.json`).
-- QR code linking to demo.
 - Clearable/resettable workspace.
 - Syntax-aware token formatting in tree display.
 - Export parse tree as JSON.

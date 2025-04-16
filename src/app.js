@@ -14,7 +14,7 @@ const App = {
 
   runParser() {
     if (!WorkerModule.isReady) return UI.showToast('Pyodide is still loading...', 'error');
-    if (!App.hasContentChanged()) return console.log('No changes detected. Skipping parse.');
+    if (!this.hasContentChanged()) return console.log('No changes detected. Skipping parse.');
 
     const grammar = EditorModule.getGrammarValue();
     const text = EditorModule.getInputValue();
@@ -38,7 +38,13 @@ const App = {
 
   initialize: async function () {
     await EditorModule.initEditors();
+
+    // Double‑click in editor → scroll to tree
     EditorModule.inputEditor.dom.addEventListener('dblclick', UI.handleDoubleClickOnInput);
+    // Hover in editor → highlight tree
+    EditorModule.inputEditor.dom.addEventListener('mousemove', UI.handleMouseMoveOnInput);
+    EditorModule.inputEditor.dom.addEventListener('mouseleave', UI.handleMouseLeaveOnInput);
+
     window.addEventListener('resize', EditorModule.resizeEditors);
     EditorModule.resizeEditors();
 
@@ -47,7 +53,8 @@ const App = {
     this._bindUIActions();
 
     await this.populateExampleMenus();
-    SettingsModule.loadFromLocalStorage();
+    SettingsModule.loadSettings();
+    await SettingsModule.loadFromLocalStorage();
   },
 
   _setupVerticalResize() {
@@ -77,8 +84,14 @@ const App = {
     });
 
     document.addEventListener('mouseup', () => {
+      if (!resizing) return;
       resizing = false;
       document.body.style.cursor = 'default';
+      // **persist the final heights**
+      const gh = grammarBlock.getBoundingClientRect().height;
+      const ih = inputBlock.getBoundingClientRect().height;
+      localStorage.setItem('grammarHeight', gh);
+      localStorage.setItem('inputHeight', ih);
     });
   },
 
@@ -87,6 +100,10 @@ const App = {
     const colResizer = document.getElementById('column-divider');
     const container = document.querySelector('.split-pane');
     let dragging = false;
+
+    // on init, apply saved width:
+    const saved = localStorage.getItem('leftPaneWidth');
+    if (saved) leftPane.style.width = `${saved}px`;
 
     colResizer.addEventListener('mousedown', (e) => {
       e.preventDefault();
@@ -105,8 +122,12 @@ const App = {
     });
 
     document.addEventListener('mouseup', () => {
+      if (!dragging) return;
       dragging = false;
       document.body.style.cursor = 'default';
+      // **persist the final width**
+      const w = leftPane.getBoundingClientRect().width;
+      localStorage.setItem('leftPaneWidth', w);
     });
   },
 
@@ -119,18 +140,28 @@ const App = {
     });
 
     document.addEventListener('click', (e) => {
-      // click is not on the "help" popover
-      const helpPopover = document.getElementById('help-popover');
-      const helpButton = document.getElementById('help-toggle');
-      if (!helpPopover.contains(e.target) && !helpButton.contains(e.target)) {
-        helpPopover.classList.add('hidden');
+      // Hide help
+      const hp = document.getElementById('help-popover');
+      if (
+        hp &&
+        !hp.contains(e.target) &&
+        !document.getElementById('help-toggle').contains(e.target)
+      ) {
+        hp.classList.add('hidden');
       }
-
-      // click is not on the "settings" popover
-      const settingsPopover = document.getElementById('settings-popover');
-      const settingsButton = document.getElementById('settings-toggle');
-      if (!settingsPopover.contains(e.target) && !settingsButton.contains(e.target)) {
-        settingsPopover.classList.add('hidden');
+      // Hide settings
+      const sp = document.getElementById('settings-popover');
+      if (
+        sp &&
+        !sp.contains(e.target) &&
+        !document.getElementById('settings-toggle').contains(e.target)
+      ) {
+        sp.classList.add('hidden');
+      }
+      // Hide submit‑failure popover
+      const sb = document.getElementById('submit-popover');
+      if (sb && !sb.contains(e.target)) {
+        sb.classList.add('hidden');
       }
     });
 
@@ -141,40 +172,33 @@ const App = {
 
     document.getElementById('parse-button')?.addEventListener('click', () => this.runParser());
 
-    document.getElementById('submit-download-button')?.addEventListener('click', () => {
-      const grammar = EditorModule.getGrammarValue();
-      const input = EditorModule.getInputValue();
-      const title = encodeURIComponent('Parser failed on valid Bruker code');
-      const body = `### What happened?\n\nParser failed on valid Bruker pulse code.\n\n### Pulse Code\n\n\```bruker\n${input}\n\```\n\n### Grammar Used\n\n\```lark\n${grammar}\n\```\n\n### Additional Notes\n\n(Please add any extra context here.)`;
-      navigator.clipboard
-        .writeText(body)
-        .then(() => {
-          window.open(`https://github.com/gyromagnet/pulse/issues/new?title=${title}`, '_blank');
-          UI.showToast(
-            'Copied full issue body to clipboard. Paste it into the GitHub issue.',
-            'success',
-          );
-        })
-        .catch(() => alert('Failed to copy to clipboard. Please copy manually.'));
+    // **Export JSON**
+    document.getElementById('export-json-button')?.addEventListener('click', () => {
+      if (TreeModule.lastParseTree) {
+        const blob = new Blob([JSON.stringify(TreeModule.lastParseTree, null, 2)], {
+          type: 'application/json',
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'parse-tree.json';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
     });
 
     document.getElementById('collapse-all-button')?.addEventListener('click', () => {
-      document.querySelectorAll('.tree-node').forEach((node) => node.classList.add('collapsed'));
+      document.querySelectorAll('.tree-node').forEach((n) => n.classList.add('collapsed'));
     });
     document.getElementById('expand-all-button')?.addEventListener('click', () => {
-      document.querySelectorAll('.tree-node').forEach((node) => node.classList.remove('collapsed'));
+      document.querySelectorAll('.tree-node').forEach((n) => n.classList.remove('collapsed'));
     });
 
     document.getElementById('show-hidden-checkbox')?.addEventListener('change', () => {
-      if (TreeModule.lastParseTree) {
-        TreeModule.renderAndDisplayTree(TreeModule.lastParseTree);
-      }
+      if (TreeModule.lastParseTree) TreeModule.renderAndDisplayTree(TreeModule.lastParseTree);
     });
-
     document.getElementById('compress-checkbox')?.addEventListener('change', () => {
-      if (TreeModule.lastParseTree) {
-        TreeModule.renderAndDisplayTree(TreeModule.lastParseTree);
-      }
+      if (TreeModule.lastParseTree) TreeModule.renderAndDisplayTree(TreeModule.lastParseTree);
     });
   },
 
@@ -221,7 +245,7 @@ const App = {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
-  UI.showToast('Loading Pyodide...');
+  UI.showToast('Loading Pyodide…');
   WorkerModule.init();
   await App.initialize();
 });

@@ -6,7 +6,7 @@ export const TreeModule = {
   treeNodeList: [],
 
   formatTokenValue(value) {
-    return value.trim() === '' ? value.replace(/\n/g, '↵') : value;
+    return `"${value.trim() === '' ? value.replace(/\n/g, '↵') : value}"`;
   },
 
   renderAndDisplayTree(tree) {
@@ -23,7 +23,6 @@ export const TreeModule = {
       showHidden,
       compress,
     });
-
     treeRoot.classList.add('root-node');
     output.appendChild(treeRoot);
 
@@ -54,7 +53,7 @@ export const TreeModule = {
   },
 
   collectTreeNodes(node) {
-    if (node?.startPos != null && node.endPos != null && node._domElement) {
+    if (node.startPos != null && node.endPos != null && node._domElement) {
       this.treeNodeList.push(node);
     }
     node.children?.forEach((child) => this.collectTreeNodes(child));
@@ -67,27 +66,20 @@ export const TreeModule = {
     wrapper._endPos = node.endPos;
     node._domElement = wrapper;
 
-    const labelRow = document.createElement('div');
-    labelRow.className = 'tree-label';
-
+    // Hover highlighting
     wrapper.addEventListener('mouseenter', (e) => {
       e.stopPropagation();
       if (node.startPos != null && node.endPos != null) {
         UI.highlightRange(node.startPos, node.endPos);
       }
     });
-
     wrapper.addEventListener('mouseleave', UI.clearHighlight);
-    labelRow.addEventListener('mouseenter', (e) => {
-      e.stopPropagation();
-      if (node.startPos != null && node.endPos != null) {
-        UI.highlightRange(node.startPos, node.endPos);
-      }
-    });
 
-    labelRow.addEventListener('mouseleave', UI.clearHighlight);
+    const labelRow = document.createElement('div');
+    labelRow.className = 'tree-label';
+    wrapper.appendChild(labelRow);
 
-    // Apply visual path compression inline without mutating the tree
+    // Compression logic for rule names
     let displayNode = node;
     let nameChain = [node.name];
     if (compress && node.type === 'rule') {
@@ -98,54 +90,69 @@ export const TreeModule = {
     }
 
     if (node.type === 'rule' && displayNode.children?.length) {
-      labelRow.classList.add('collapse-toggle');
+      // Collapse icon
+      const collapseIcon = document.createElement('span');
+      collapseIcon.className = 'collapse-toggle-icon';
+      collapseIcon.textContent = '▼';
+      collapseIcon.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (e.detail === 1) {
+          wrapper.classList.toggle('collapsed');
+        }
+      });
+      collapseIcon.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        if (e.detail === 1) {
+          wrapper.classList.toggle('collapsed');
+        }
+      });
 
-      const label = document.createElement('span');
-      label.className = 'tree-rule';
+      labelRow.appendChild(collapseIcon);
 
-      // Optional: render > separators between rule names
-      for (let i = 0; i < nameChain.length; i++) {
+      // Rule name(s)
+      const ruleLabel = document.createElement('span');
+      ruleLabel.className = 'tree-rule';
+      nameChain.forEach((n, i) => {
         const span = document.createElement('span');
-        span.textContent = nameChain[i];
-        label.appendChild(span);
+        span.textContent = n;
+        ruleLabel.appendChild(span);
         if (i < nameChain.length - 1) {
           const sep = document.createElement('span');
           sep.textContent = ' > ';
           sep.className = 'tree-rule-separator';
-          label.appendChild(sep);
+          ruleLabel.appendChild(sep);
         }
-      }
+      });
+      labelRow.appendChild(ruleLabel);
 
-      labelRow.appendChild(label);
-      wrapper.appendChild(labelRow);
-
+      // Recurse children
       const childrenContainer = document.createElement('div');
       childrenContainer.className = 'tree-children';
-
-      displayNode.children.forEach((child, index) => {
-        const childIsLast = index === displayNode.children.length - 1;
+      displayNode.children.forEach((child, idx) => {
         childrenContainer.appendChild(
           this.renderTree(child, {
             depth: depth + 1,
-            isLast: childIsLast,
+            isLast: idx === displayNode.children.length - 1,
             showHidden,
             compress,
           }),
         );
       });
-
       wrapper.appendChild(childrenContainer);
 
-      labelRow.addEventListener('click', (e) => {
+      // Double‑click → select in editor
+      labelRow.addEventListener('dblclick', (e) => {
         e.stopPropagation();
-        wrapper.classList.toggle('collapsed');
+        if (node.startPos != null && node.endPos != null) {
+          EditorModule.moveSelection(node.startPos, node.endPos);
+        }
       });
     } else if (node.type === 'token') {
       if (node.hidden && !showHidden) {
-        wrapper.classList.add('hidden-token-placeholder');
-        return wrapper;
+        return document.createDocumentFragment();
       }
 
+      // Token label
       const tokenWrapper = document.createElement('span');
       tokenWrapper.className = 'tree-token';
 
@@ -156,32 +163,54 @@ export const TreeModule = {
         tokenWrapper.appendChild(label);
       }
 
+      // Value wrapper with quotes + char spans
       const valueWrapper = document.createElement('span');
       valueWrapper.className = 'tree-text-wrapper';
 
-      const value = document.createElement('span');
-      value.className = 'tree-text';
-      value.textContent = ` "${this.formatTokenValue(node.value)}"`;
+      // Opening quote
+      const openQuote = document.createElement('span');
+      openQuote.className = 'tree-text';
+      openQuote.textContent = '"';
+      valueWrapper.appendChild(openQuote);
 
-      valueWrapper.appendChild(value);
-      node._textElement = value;
+      // Per-character spans
+      const valueSpan = document.createElement('span');
+      valueSpan.className = 'tree-text';
+      const tokenStart = node.startPos ?? 0;
+      for (let i = 0; i < node.value.length; i++) {
+        const charSpan = document.createElement('span');
+        const ch = node.value[i] === '\n' && node.value.trim() === '' ? '↵' : node.value[i];
+        charSpan.textContent = ch;
+        charSpan.dataset.pos = tokenStart + i;
+        valueSpan.appendChild(charSpan);
+      }
+      valueWrapper.appendChild(valueSpan);
+
+      // Closing quote
+      const closeQuote = document.createElement('span');
+      closeQuote.className = 'tree-text';
+      closeQuote.textContent = '"';
+      valueWrapper.appendChild(closeQuote);
+
+      node._textElement = valueSpan;
       node._textWrapper = valueWrapper;
-
-      value.addEventListener('dblclick', () => {
-        if (node.startPos != null) {
-          EditorModule.setCursorAndScroll(node.startPos);
-        }
-      });
 
       tokenWrapper.appendChild(valueWrapper);
       labelRow.appendChild(tokenWrapper);
-      wrapper.appendChild(labelRow);
-    } else if (node.type === 'rule') {
+
+      // Double‑click → select in editor
+      labelRow.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        if (node.startPos != null && node.endPos != null) {
+          EditorModule.moveSelection(node.startPos, node.endPos);
+        }
+      });
+    } else {
+      // Fallback rule with no children
       const label = document.createElement('span');
       label.className = 'tree-rule';
       label.textContent = node.name;
       labelRow.appendChild(label);
-      wrapper.appendChild(labelRow);
     }
 
     return wrapper;

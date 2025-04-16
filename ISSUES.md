@@ -1,0 +1,5 @@
+- double clicking (or clicking too fast) on a node handle (the little triangle) causes it to collapse/expand. Double clicking to collapse/expand should only work if the cursor is over a rule node label, a token node label, or a token value
+- the node handles need large click targets
+- the node handles should appear in front of the tree guide lines
+- there should be a small gap between the TOKEN label and the token value
+- there should be a small gap between the end of the

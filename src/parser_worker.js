@@ -52,7 +52,6 @@ self.onmessage = async (event) => {
         regex=${regex ? 'True' : 'False'}
       )
     `);
-    console.log(result);
     self.postMessage({ type: 'success', tree: JSON.parse(result) });
   } catch (err) {
     const message = await safeStringifyError(err);

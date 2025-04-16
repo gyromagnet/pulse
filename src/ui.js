@@ -7,57 +7,42 @@ import { Decoration } from '@codemirror/view';
 function getEl(id) {
   return document.getElementById(id);
 }
-
 function clearSelectedTreeNodes() {
-  document.querySelectorAll('.selected-tree-node').forEach((el) => {
-    el.classList.remove('selected-tree-node');
-  });
+  document
+    .querySelectorAll('.selected-tree-node')
+    .forEach((el) => el.classList.remove('selected-tree-node'));
 }
-
 function stopTreeHighlight(match) {
-  if (match && match._domElement) {
-    match._domElement.classList.remove('highlighted-tree-node');
-  }
+  if (match && match._domElement) match._domElement.classList.remove('highlighted-tree-node');
 }
 
 export const UI = {
   currentHighlight: null,
-  lastTreeHighlight: null,
   treeCursorEl: null,
-  errorHighlight: null,
+  lastTreeHighlight: null,
 
-  debounce: function (fn, delay) {
-    let timeout;
-    return function (...args) {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => fn.apply(this, args), delay);
-    };
-  },
-
-  handleKeyShortcut: function (event) {
-    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+  handleKeyShortcut(event) {
+    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
       App.runParser();
       event.preventDefault();
     }
   },
 
-  handleMouseMoveOnInput: function (event) {
+  handleMouseMoveOnInput(event) {
     const pos = EditorModule.inputEditor.posAtCoords({ x: event.clientX, y: event.clientY });
-    if (pos == null) return;
-    UI.highlightTreeNodeFromInput(pos);
+    if (pos != null) UI.highlightTreeNodeFromInput(pos);
   },
 
-  handleMouseLeaveOnInput: function () {
+  handleMouseLeaveOnInput() {
     if (UI.lastTreeHighlight) {
       stopTreeHighlight(UI.lastTreeHighlight);
       UI.lastTreeHighlight = null;
     }
   },
 
-  handleDoubleClickOnInput: function () {
-    const sel = EditorModule.inputEditor.state.selection.main;
-    const index = sel.from;
-    const match = UI.findDeepestNode(TreeModule.lastParseTree, index);
+  handleDoubleClickOnInput() {
+    const idx = EditorModule.inputEditor.state.selection.main.from;
+    const match = UI.findDeepestNode(TreeModule.lastParseTree, idx);
     if (match && match._domElement) {
       match._domElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
       match._domElement.classList.add('selected-tree-node');
@@ -65,24 +50,25 @@ export const UI = {
     }
   },
 
-  findDeepestNode: function (node, index) {
+  findDeepestNode(node, index) {
     if (node.startPos == null || node.endPos == null) return null;
     if (index < node.startPos || index >= node.endPos) return null;
+    const showHidden = getEl('show-hidden-checkbox')?.checked;
+    if (node.hidden && !showHidden) return null;
 
-    const showHidden = getEl('showHiddenCheckbox')?.checked;
-    if (showHidden && node.hidden) return node;
-
-    let bestMatch = node;
+    let result = node;
     if (node.children) {
       node.children.forEach((child) => {
-        const match = UI.findDeepestNode(child, index);
-        if (match) bestMatch = match;
+        const deeper = UI.findDeepestNode(child, index);
+        if (deeper) {
+          result = deeper;
+        }
       });
     }
-    return bestMatch;
+    return result;
   },
 
-  getFullySelectedNodes: function (node, selFrom, selTo) {
+  getFullySelectedNodes(node, selFrom, selTo) {
     if (node.startPos == null || node.endPos == null) return [];
     if (selFrom <= node.startPos && node.endPos <= selTo) {
       if (node.children?.length > 0) {
@@ -102,56 +88,83 @@ export const UI = {
     return node.children?.flatMap((child) => UI.getFullySelectedNodes(child, selFrom, selTo)) || [];
   },
 
-  handleCursorActivity: function () {
+  handleCursorActivity() {
     clearSelectedTreeNodes();
+    UI.clearPartialTokenHighlights();
+
     const ranges = EditorModule.inputEditor.state.selection.ranges;
-    if (!ranges.length || ranges[0].empty) return;
-    const selRange = ranges[0];
-    const fromIdx = selRange.from;
-    const toIdx = selRange.to;
-    const nodesToHighlight = UI.getFullySelectedNodes(TreeModule.lastParseTree, fromIdx, toIdx);
-    nodesToHighlight.forEach((node) => node._domElement?.classList.add('selected-tree-node'));
-    nodesToHighlight.at(-1)?._domElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (ranges.length && !ranges[0].empty) {
+      const { from: selFrom, to: selTo } = ranges[0];
+      const nodesToHighlight = UI.getFullySelectedNodes(TreeModule.lastParseTree, selFrom, selTo);
+      nodesToHighlight.forEach((node) => node._domElement?.classList.add('selected-tree-node'));
+      nodesToHighlight.at(-1)?._domElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      UI.highlightPartialTokens(selFrom, selTo);
+    }
+
+    UI.updateTreeCursor();
   },
 
-  updateTreeCursor: function () {
+  updateTreeCursor() {
+    // remove previous
     UI.treeCursorEl?.remove();
     UI.treeCursorEl = null;
     if (!TreeModule.lastParseTree) return;
+
     const sel = EditorModule.inputEditor.state.selection.main;
-    const cursorIndex = sel.from;
-    const focusedNode = UI.findDeepestNode(TreeModule.lastParseTree, cursorIndex);
-    if (focusedNode && focusedNode._domElement) {
-      document
-        .querySelectorAll('.highlighted-tree-node-cursor')
-        .forEach((el) => el.classList.remove('highlighted-tree-node-cursor'));
-      const showHidden = getEl('showHiddenCheckbox')?.checked;
-      if (focusedNode.hidden && !showHidden) {
-        const cursorLine = document.createElement('div');
-        cursorLine.className = 'tree-cursor tree-cursor-line';
-        focusedNode._domElement.appendChild(cursorLine);
-        UI.treeCursorEl = cursorLine;
-      } else {
-        focusedNode._domElement.classList.add('highlighted-tree-node-cursor');
-        if (
-          focusedNode.type === 'token' &&
-          focusedNode._textWrapper &&
-          focusedNode.startPos != null
-        ) {
-          const cursorEl = document.createElement('span');
-          cursorEl.className = 'tree-cursor';
-          const charWidth = 7;
-          const offset = Math.max(0, cursorIndex - focusedNode.startPos);
-          cursorEl.style.left = `${offset * charWidth + 12}px`;
-          focusedNode._textWrapper.appendChild(cursorEl);
-          UI.treeCursorEl = cursorEl;
-        }
-      }
-      focusedNode._domElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const idx = sel.from;
+    const node = UI.findDeepestNode(TreeModule.lastParseTree, idx);
+    if (!node || !node._domElement) return;
+
+    document
+      .querySelectorAll('.highlighted-tree-node-cursor')
+      .forEach((el) => el.classList.remove('highlighted-tree-node-cursor'));
+
+    const showHidden = getEl('show-hidden-checkbox')?.checked;
+
+    if (node.hidden && !showHidden) {
+      // hidden‐token horizontal line
+      const cursorLine = document.createElement('div');
+      cursorLine.className = 'tree-cursor tree-cursor-line';
+      node._domElement.appendChild(cursorLine);
+      UI.treeCursorEl = cursorLine;
+      return;
     }
+
+    // visible token or rule: inline cursor
+    node._domElement.classList.add('highlighted-tree-node-cursor');
+
+    if (node.type === 'token' && node._textWrapper && node.startPos != null) {
+      const wrapper = node._textWrapper;
+      const spans = Array.from(wrapper.querySelectorAll('span[data-pos]'));
+      const rel = idx;
+      const cursorEl = document.createElement('span');
+      cursorEl.className = 'tree-cursor';
+
+      // find the exact span for this position
+      let target = spans.find((s) => parseInt(s.dataset.pos, 10) === rel);
+      if (target) {
+        const r = target.getBoundingClientRect();
+        const wr = wrapper.getBoundingClientRect();
+        cursorEl.style.left = `${r.left - wr.left}px`;
+      } else if (rel === node.endPos && spans.length) {
+        // at end of token: place after last span
+        const last = spans[spans.length - 1];
+        const r = last.getBoundingClientRect();
+        const wr = wrapper.getBoundingClientRect();
+        cursorEl.style.left = `${r.right - wr.left}px`;
+      } else {
+        // fallback: start of wrapper
+        cursorEl.style.left = '0px';
+      }
+
+      wrapper.appendChild(cursorEl);
+      UI.treeCursorEl = cursorEl;
+    }
+
+    node._domElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
   },
 
-  highlightTreeNodeFromInput: function (index) {
+  highlightTreeNodeFromInput(index) {
     if (!TreeModule.lastParseTree) return;
     const match = UI.findDeepestNode(TreeModule.lastParseTree, index);
     if (!match || !match._domElement) return;
@@ -160,7 +173,7 @@ export const UI = {
     UI.lastTreeHighlight = match;
   },
 
-  highlightRange: function (start, end) {
+  highlightRange(start, end) {
     if (start == null || end == null || start >= end) return;
     const builder = new RangeSetBuilder();
     builder.add(start, end, Decoration.mark({ class: 'highlighted-text' }));
@@ -170,7 +183,7 @@ export const UI = {
     UI.currentHighlight = true;
   },
 
-  clearHighlight: function () {
+  clearHighlight() {
     if (UI.currentHighlight) {
       EditorModule.inputEditor.dispatch({
         effects: EditorModule.setHighlightEffect.of(Decoration.none),
@@ -179,23 +192,49 @@ export const UI = {
     }
   },
 
-  showToast: function (message, type = 'success', duration = 3000) {
-    const toast = getEl('toast');
-    if (!toast) return;
-    toast.textContent = message;
-    toast.className = 'toast show ' + type;
-    toast.classList.remove('hidden');
+  showToast(message, type = 'success', duration = 3000) {
+    const t = getEl('toast');
+    if (!t) return;
+    t.textContent = message;
+    t.className = `toast show ${type}`;
+    t.classList.remove('hidden');
     setTimeout(() => {
-      toast.classList.remove('show');
-      setTimeout(() => toast.classList.add('hidden'), 300);
+      t.classList.remove('show');
+      setTimeout(() => t.classList.add('hidden'), 300);
     }, duration);
 
     if (type === 'error') {
-      getEl('submit-popover').style.display = 'block';
+      const sb = getEl('submit-popover');
+      if (sb) sb.classList.remove('hidden');
     }
   },
 
-  toggleSettings: function () {
-    document.getElementById('settings-popover').classList.toggle('hidden');
+  toggleSettings() {
+    getEl('settings-popover')?.classList.toggle('hidden');
+  },
+
+  highlightPartialTokens(selFrom, selTo) {
+    TreeModule.treeNodeList.forEach((node) => {
+      if (node.type === 'token' && node._textElement) {
+        node._textElement.querySelectorAll('span[data-pos]').forEach((span) => {
+          const pos = parseInt(span.dataset.pos, 10);
+          if (pos >= selFrom && pos < selTo) {
+            span.classList.add('highlighted-text');
+          } else {
+            span.classList.remove('highlighted-text');
+          }
+        });
+      }
+    });
+  },
+
+  clearPartialTokenHighlights() {
+    TreeModule.treeNodeList.forEach((node) => {
+      if (node._textElement) {
+        node._textElement
+          .querySelectorAll('.highlighted-text')
+          .forEach((el) => el.classList.remove('highlighted-text'));
+      }
+    });
   },
 };

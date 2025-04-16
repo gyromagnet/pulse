@@ -2,7 +2,6 @@ import { UI } from './ui.js';
 import { TreeModule } from './tree.js';
 import { EditorModule } from './editor.js';
 import { App } from './app.js';
-import { Decoration } from '@codemirror/view';
 
 export const WorkerModule = {
   worker: null,
@@ -65,23 +64,16 @@ export const WorkerModule = {
 
     const match = message.match(/line (\d+)[^\d]*column (\d+)/i);
     if (match) {
-      const [_lineNum, lineStr, colStr] = match;
-      const lineNum = parseInt(lineStr, 10);
-      const col = parseInt(colStr, 10);
+      const lineNum = parseInt(match[1], 10);
+      const col = parseInt(match[2], 10);
       try {
         const lineObj = EditorModule.inputEditor.state.doc.line(lineNum);
         const pos = lineObj.from + col;
-        EditorModule.setCursorAndScroll(pos);
+        // **Fixed:** pass both start & end
+        EditorModule.moveSelection(pos, pos);
       } catch (e) {
         console.error('Error converting line/column to position', e);
       }
-    }
-
-    if (UI.errorHighlight) {
-      EditorModule.inputEditor.dispatch({
-        effects: EditorModule.setHighlightEffect.of(Decoration.none),
-      });
-      UI.errorHighlight = null;
     }
 
     App._lastGrammar = '';

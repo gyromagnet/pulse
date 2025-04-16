@@ -17,29 +17,30 @@ export const SettingsModule = {
     'enableAdvanced',
   ],
 
+  idMap: {
+    parser: 'parser-select',
+    lexer: 'lexer-select',
+    regex: 'regex-select',
+    debug: 'debug-checkbox',
+    strict: 'strict-checkbox',
+    start: 'start-input',
+    compressTree: 'compress-checkbox',
+    showHidden: 'show-hidden-checkbox',
+    enableAdvanced: 'enable-advanced',
+  },
+
   getSettingElement(key) {
-    return (
-      document.getElementById(`${key}Input`) ||
-      document.getElementById(`${key}Select`) ||
-      document.getElementById(`${key}Checkbox`)
-    );
+    const id = this.idMap[key];
+    return id ? document.getElementById(id) : null;
   },
 
   saveSettings() {
     this.settingsKeys.forEach((key) => {
       const el = this.getSettingElement(key);
       if (!el) return;
-      const value = el.type === 'checkbox' ? el.checked : el.value;
-      localStorage.setItem(key, value);
+      const val = el.type === 'checkbox' ? el.checked : el.value;
+      localStorage.setItem(key, val);
     });
-  },
-
-  saveSettingsAndClose() {
-    this.saveSettings();
-    UI.toggleSettings();
-    if (TreeModule.lastParseTree) {
-      TreeModule.renderAndDisplayTree(TreeModule.lastParseTree);
-    }
   },
 
   loadSettings() {
@@ -52,72 +53,63 @@ export const SettingsModule = {
       start: 'pulseprogram',
       compressTree: true,
       showHidden: false,
+      enableAdvanced: false,
     };
 
     this.settingsKeys.forEach((key) => {
       const el = this.getSettingElement(key);
       if (!el) return;
-
       const stored = localStorage.getItem(key);
       const value = stored !== null ? stored : defaults[key];
 
       if (el.type === 'checkbox') {
         el.checked = value === true || value === 'true';
-      } else if (value != null) {
+      } else {
         el.value = value;
       }
 
-      this._attachChangeListener(key, el);
+      el.addEventListener('change', () => {
+        localStorage.setItem(key, el.type === 'checkbox' ? el.checked : el.value);
+        if (['compressTree', 'showHidden'].includes(key) && TreeModule.lastParseTree) {
+          TreeModule.renderAndDisplayTree(TreeModule.lastParseTree);
+        }
+      });
     });
 
-    // Restore layout sizes
-    const grammarBlock = document.getElementById('grammar-block');
-    const inputBlock = document.getElementById('input-block');
-    const savedGrammarHeight = localStorage.getItem('grammarHeight');
-    const savedInputHeight = localStorage.getItem('inputHeight');
-
-    if (savedGrammarHeight && savedInputHeight) {
-      grammarBlock.style.flex = `0 0 ${savedGrammarHeight}px`;
-      inputBlock.style.flex = `0 0 ${savedInputHeight}px`;
+    // restore pane sizes
+    const gh = localStorage.getItem('grammarHeight');
+    const ih = localStorage.getItem('inputHeight');
+    if (gh && ih) {
+      document.getElementById('grammar-block').style.flex = `0 0 ${gh}px`;
+      document.getElementById('input-block').style.flex = `0 0 ${ih}px`;
     }
-  },
-
-  _attachChangeListener(key, el) {
-    el.addEventListener('change', () => {
-      const val = el.type === 'checkbox' ? el.checked : el.value;
-      localStorage.setItem(key, val);
-
-      if (['compressTree', 'showHidden'].includes(key) && TreeModule.lastParseTree) {
-        TreeModule.renderAndDisplayTree(TreeModule.lastParseTree);
-      }
-    });
   },
 
   saveToLocalStorage() {
-    localStorage.setItem('larkGrammar', EditorModule.getGrammarValue());
-    localStorage.setItem('larkInput', EditorModule.getInputValue());
+    localStorage.setItem('grammar', EditorModule.getGrammarValue());
+    localStorage.setItem('pulseCode', EditorModule.getInputValue());
   },
 
   async loadFromLocalStorage() {
-    const savedGrammar = localStorage.getItem('grammar');
-    const savedPulseCode = localStorage.getItem('pulseCode');
+    const g = localStorage.getItem('grammar');
+    const p = localStorage.getItem('pulseCode');
 
-    if (savedGrammar !== null) {
-      EditorModule.setValue(EditorModule.grammarEditor, savedGrammar);
+    if (g !== null) {
+      EditorModule.setValue(EditorModule.grammarEditor, g);
     } else {
       const res = await fetch('grammars/bruker.lark');
-      const defaultGrammar = await res.text();
-      EditorModule.setValue(EditorModule.grammarEditor, defaultGrammar);
-      localStorage.setItem('grammar', defaultGrammar);
+      const text = await res.text();
+      EditorModule.setValue(EditorModule.grammarEditor, text);
+      localStorage.setItem('grammar', text);
     }
 
-    if (savedPulseCode !== null) {
-      EditorModule.setValue(EditorModule.inputEditor, savedPulseCode);
+    if (p !== null) {
+      EditorModule.setValue(EditorModule.inputEditor, p);
     } else {
       const res = await fetch('example_code/zg');
-      const defaultPulseCode = await res.text();
-      EditorModule.setValue(EditorModule.inputEditor, defaultPulseCode);
-      localStorage.setItem('pulseCode', defaultPulseCode);
+      const text = await res.text();
+      EditorModule.setValue(EditorModule.inputEditor, text);
+      localStorage.setItem('pulseCode', text);
     }
   },
 

@@ -1,10 +1,20 @@
 :root {
   --theme-accent-color: #0074d9;
-  --theme-highlight-color: rgb(0 123 255 / 20%);
-  --theme-highlight-outline: rgb(0 123 255 / 50%);
+  --theme-highlight-color: #08f;
+  --theme-tree-highlight: #2af;
+  --theme-tree-select: #fe4;
   --theme-error-color: #e74c3c;
   --theme-success-color: #2ecc71;
   --theme-cursor-color: black;
+  --theme-border-color: #ccc;
+  --theme-divider-bg: #aaa;
+  --theme-divider-hover-bg: #666;
+  --theme-output-bg: #f4f4f4;
+  --theme-terminal-color: #2ecc40;
+  --theme-collapse-hover-bg: #000;
+  --theme-collapse-color: #999;
+  --theme-tooltip-bg: #333;
+  --theme-tooltip-text: #fff;
 }
 
 html,
@@ -69,7 +79,7 @@ h3 {
 .grip-icon-horizontal,
 .grip-icon-vertical {
   border-radius: 2px;
-  background: #aaa;
+  background: var(--theme-divider-bg);
   transition: background 0.2s ease;
 }
 
@@ -85,7 +95,7 @@ h3 {
 
 .resizer-horizontal:hover .grip-icon-horizontal,
 .resizer-vertical:hover .grip-icon-vertical {
-  background: #666;
+  background: var(--theme-divider-hover-bg);
 }
 
 /* === Editor Panel === */
@@ -125,7 +135,7 @@ h3 {
 
 .cm-editor {
   height: 100% !important;
-  border: 1px solid #ccc;
+  border: 1px solid var(--theme-border-color);
 }
 
 .editor-header {
@@ -172,8 +182,8 @@ pre#output {
   white-space: pre;
   font-family: monospace;
   padding: 10px;
-  border: 1px solid #ccc;
-  background: #f4f4f4;
+  border: 1px solid var(--theme-border-color);
+  background: var(--theme-output-bg);
   margin: 0;
 }
 
@@ -182,7 +192,7 @@ pre#output {
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 0.5em;
+  margin-left: 0.5em;
 }
 
 .tree-rule {
@@ -192,11 +202,12 @@ pre#output {
 
 .tree-terminal {
   font-style: italic;
-  color: #2ecc40;
+  color: var(--theme-terminal-color);
+  margin-right: 0.25em;
 }
 
 .tree-text {
-  color: #555;
+  color: var(--theme-text-color);
   font-family: monospace;
 }
 
@@ -204,6 +215,13 @@ pre#output {
   position: relative;
   display: inline-block;
   white-space: pre;
+}
+
+.tree-text span.highlighted-text {
+  background: var(--theme-highlight-color);
+  opacity: 0.2;
+  outline: none;
+  border-radius: 0;
 }
 
 .tree-node {
@@ -214,20 +232,20 @@ pre#output {
 .tree-node::before {
   content: '';
   position: absolute;
-  top: 0.7em;
-  left: -0.2em;
-  width: 1.2em;
+  top: 0.56em;
+  left: -0.33em;
+  width: 1.3em;
   height: 0;
-  border-top: 1px solid #ccc;
+  border-top: 1.5px solid var(--theme-border-color);
 }
 
-.tree-node:not(.last-child)::after {
+.tree-node::after {
   content: '';
   position: absolute;
-  top: -0.5em;
-  height: 100%;
-  left: -0.2em;
-  border-left: 1px solid #ccc;
+  top: -0.6em;
+  bottom: 0.5em;
+  left: -0.33em;
+  border-left: 1.5px solid var(--theme-border-color);
 }
 
 .tree-node.last-child::after {
@@ -240,15 +258,24 @@ pre#output {
 }
 
 /* Collapse toggle */
-.collapse-toggle::before {
-  content: '▼';
-  width: 1em;
-  margin-right: 0.25em;
-  transition: transform 0.2s ease;
-  transform-origin: 30% 60%;
+.collapse-toggle-icon {
+  position: relative;
+  left: -0.9em;
+  z-index: 2;
+  padding: 0 0.3em;
+  margin-right: -1em;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+  color: var(--theme-collapse-color);
 }
 
-.collapsed > .tree-label::before {
+.collapse-toggle-icon:hover {
+  background: color-mix(in srgb, white 95%, var(--theme-collapse-hover-bg));
+  border-radius: 3px;
+}
+
+.collapsed > .tree-label .collapse-toggle-icon {
   transform: rotate(-90deg);
 }
 
@@ -262,17 +289,16 @@ pre#output {
 
 /* === Highlighting & Feedback === */
 .highlighted-text {
-  background: var(--theme-highlight-color);
-  outline: 1px solid var(--theme-highlight-outline);
+  background: color-mix(in srgb, white 80%, var(--theme-highlight-color));
   border-radius: 3px;
 }
 
 .selected-tree-node {
-  background-color: rgb(255 235 59 / 30%);
+  background-color: color-mix(in srgb, white 70%, var(--theme-tree-highlight));
 }
 
 .highlighted-tree-node {
-  background-color: rgb(33 150 243 / 30%);
+  background-color: color-mix(in srgb, white 70%, var(--theme-tree-select));
 }
 
 .tree-cursor {
@@ -286,6 +312,7 @@ pre#output {
   height: 1em;
   transition: all 0.3s ease;
   z-index: 10;
+  opacity: 1;
 }
 
 .tree-cursor-line {
@@ -300,12 +327,12 @@ pre#output {
   bottom: 20px;
   right: 20px;
   background: var(--theme-success-color);
-  color: white;
+  color: var(--theme-tooltip-text);
   padding: 0.75em 1em;
   border-radius: 5px;
   font-size: 0.9em;
   z-index: 9999;
-  box-shadow: 0 2px 6px rgb(0 0 0 / 20%);
+  box-shadow: 0 2px 6px var(--theme-toast-shadow);
   opacity: 0;
   transform: translateY(20px);
   pointer-events: none;
@@ -330,14 +357,14 @@ pre#output {
 /* === Popovers & Settings === */
 .popover {
   position: absolute;
-  background: #fff;
-  border: 1px solid #ccc;
+  background: var(--theme-popup-bg);
+  border: 1px solid var(--theme-popup-border);
   padding: 15px;
   font-size: 0.9em;
   max-height: 80vh;
   overflow-y: auto;
   z-index: 1000;
-  box-shadow: 0 2px 10px rgb(0 0 0 / 20%);
+  box-shadow: 0 2px 10px var(--theme-toast-shadow);
 }
 
 .hidden {
@@ -394,8 +421,8 @@ pre#output {
   position: absolute;
   bottom: 125%;
   right: 95%;
-  background: #333;
-  color: #fff;
+  background: var(--theme-tooltip-bg);
+  color: var(--theme-tooltip-text);
   padding: 6px 10px;
   border-radius: 4px;
   font-size: 0.75em;

@@ -9,45 +9,48 @@ export const EditorModule = {
   inputEditor: null,
 
   initEditors: async function () {
-    const grammarTextArea = document.getElementById('grammar');
-    const inputTextArea = document.getElementById('input');
-    if (!grammarTextArea || !inputTextArea) {
-      console.error("Missing 'grammar' or 'input' elements");
-      return;
-    }
+    const gramTA = document.getElementById('grammar');
+    const inpTA = document.getElementById('input');
+    if (!gramTA || !inpTA) return console.error("Missing 'grammar' or 'input'");
 
-    const grammarContainer = this._setupEditorContainer(grammarTextArea, 'grammar-editor');
-    const inputContainer = this._setupEditorContainer(inputTextArea, 'input-editor');
+    const gramCont = this._setupEditorContainer(gramTA, 'grammar-editor');
+    const inpCont = this._setupEditorContainer(inpTA, 'input-editor');
 
     this.grammarEditor = new EditorView({
       state: EditorState.create({
-        doc: grammarTextArea.value,
-        extensions: [basicSetup],
+        doc: gramTA.value,
+        extensions: [
+          basicSetup,
+          EditorView.updateListener.of((update) => {
+            if (update.docChanged) SettingsModule.saveToLocalStorage();
+          }),
+        ],
       }),
-      parent: grammarContainer,
+      parent: gramCont,
     });
 
     this.inputEditor = new EditorView({
       state: EditorState.create({
-        doc: inputTextArea.value,
+        doc: inpTA.value,
         extensions: [
           basicSetup,
           this.highlightField,
           EditorView.updateListener.of((update) => {
             if (update.selectionSet) UI.handleCursorActivity();
+            if (update.docChanged) SettingsModule.saveToLocalStorage();
           }),
         ],
       }),
-      parent: inputContainer,
+      parent: inpCont,
     });
 
-    this._setupDragAndDrop(this.grammarEditor, grammarContainer, 'Grammar');
-    this._setupDragAndDrop(this.inputEditor, inputContainer, 'Input');
+    this._setupDragAndDrop(this.grammarEditor, gramCont, 'Grammar');
+    this._setupDragAndDrop(this.inputEditor, inpCont, 'Input');
 
-    grammarContainer.addEventListener('keydown', UI.handleKeyShortcut);
-    inputContainer.addEventListener('keydown', UI.handleKeyShortcut);
+    gramCont.addEventListener('keydown', UI.handleKeyShortcut);
+    inpCont.addEventListener('keydown', UI.handleKeyShortcut);
 
-    SettingsModule.loadFromLocalStorage();
+    SettingsModule.loadSettings();
   },
 
   _setupEditorContainer(textArea, className) {
@@ -168,13 +171,36 @@ export const EditorModule = {
       scrollDOM.scrollTop = targetScroll;
     }
   },
+  moveSelection(startPos, endPos) {
+    if (!this.inputEditor) return;
 
-  setCursorAndScroll(pos) {
-    if (this.inputEditor) {
-      this.inputEditor.dispatch({
-        selection: EditorSelection.single(pos),
+    const view = this.inputEditor; // or however you reference your EditorView
+
+    // Dispatch the selection change
+    view.dispatch({
+      selection: EditorSelection.range(startPos, endPos),
+    });
+
+    // Allow the selection to update first
+    requestAnimationFrame(() => {
+      // Get the coordinates of the selection
+      const coords = view.coordsAtPos((startPos + endPos) / 2);
+      if (!coords) return;
+
+      const editorDOM = view.scrollDOM;
+      const editorRect = editorDOM.getBoundingClientRect();
+
+      const selectionY = coords.top;
+      const editorHeight = editorDOM.clientHeight;
+
+      // Calculate scroll offset to center the selection
+      const targetScrollTop =
+        editorDOM.scrollTop + (selectionY - editorRect.top) - editorHeight / 2;
+
+      editorDOM.scrollTo({
+        top: targetScrollTop,
+        behavior: 'smooth', // optional: smooth scroll
       });
-      this.scrollToPos(this.inputEditor, pos, { y: 'center' });
-    }
+    });
   },
 };
