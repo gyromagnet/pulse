@@ -5,7 +5,7 @@ repos:
     hooks:
       # Run the linter.
       - id: ruff
-        args: [./public/py]
+        args: [./src/py]
       # Run the formatter.
       - id: ruff-format
-        args: [./public/py]
+        args: [./src/py]

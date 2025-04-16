@@ -6,11 +6,9 @@ export const TreeModule = {
   treeNodeList: [],
 
   formatTokenValue: function (value) {
-    // If the token value only contains whitespace, replace all newline characters with the return symbol.
     if (value.trim() === '') {
       return value.replace(/\n/g, '↵');
     }
-    // Otherwise, return the original value unchanged.
     return value;
   },
 
@@ -28,22 +26,20 @@ export const TreeModule = {
     this.treeNodeList = [];
     this.collectTreeNodes(treeData);
   },
+
   compressTree: function (node) {
     if (node.type !== 'rule') return node;
     let nameChain = [node.name];
     let current = node;
-
     while (current.children && current.children.length === 1 && current.children[0].type === 'rule') {
       current = current.children[0];
       nameChain.push(current.name);
     }
-
     const compressedChildren = current.children.map(this.compressTree.bind(this));
     const childStart = compressedChildren.map((c) => c.start_pos).filter((p) => p != null);
     const childEnd = compressedChildren.map((c) => c.end_pos).filter((p) => p != null);
     const start_pos = Math.min(...childStart, node.start_pos ?? Infinity);
     const end_pos = Math.max(...childEnd, current.end_pos ?? -1);
-
     return {
       type: 'rule',
       name: nameChain.join(' > '),
@@ -52,6 +48,7 @@ export const TreeModule = {
       end_pos,
     };
   },
+
   collectTreeNodes: function (node) {
     if (node && node.start_pos != null && node.end_pos != null && node._domElement) {
       this.treeNodeList.push(node);
@@ -60,6 +57,7 @@ export const TreeModule = {
       node.children.forEach((child) => this.collectTreeNodes(child));
     }
   },
+
   renderTree: function (node, depth = 0, isLast = true, showHidden = false) {
     const wrapper = document.createElement('div');
     wrapper.className = 'tree-node ' + (isLast ? 'last-child' : '');
@@ -75,14 +73,14 @@ export const TreeModule = {
       e.stopPropagation();
       UI.highlightRange(startPos, endPos);
     });
-    wrapper.addEventListener('mouseleave', (_e) => {
+    wrapper.addEventListener('mouseleave', () => {
       UI.clearHighlight();
     });
     labelRow.addEventListener('mouseenter', (e) => {
       e.stopPropagation();
       UI.highlightRange(startPos, endPos);
     });
-    labelRow.addEventListener('mouseleave', (_e) => {
+    labelRow.addEventListener('mouseleave', () => {
       UI.clearHighlight();
     });
 
@@ -120,39 +118,28 @@ export const TreeModule = {
         wrapper.classList.add('hidden-token-placeholder');
         return wrapper;
       }
-
       const tokenWrapper = document.createElement('span');
       tokenWrapper.className = 'tree-token';
-
       if (!node.name.startsWith('__ANON')) {
         const label = document.createElement('span');
         label.className = 'tree-terminal';
         label.textContent = `${node.name}:`;
         tokenWrapper.appendChild(label);
       }
-
-      // Container for the token text and cursor
       const valueWrapper = document.createElement('span');
       valueWrapper.className = 'tree-text-wrapper';
-
       const value = document.createElement('span');
       value.className = 'tree-text';
       value.textContent = ` "${this.formatTokenValue(node.value)}"`;
       valueWrapper.appendChild(value);
-
-      // Store references for cursor logic later
       node._textElement = value;
       node._textWrapper = valueWrapper;
-
-      // Double-click to jump to source code
+      // Double-click: jump to corresponding editor position.
       value.addEventListener('dblclick', () => {
         if (node.start_pos != null) {
-          const pos = EditorModule.inputEditor.posFromIndex(node.start_pos);
-          EditorModule.inputEditor.setCursor(pos);
-          EditorModule.inputEditor.scrollIntoView(pos, 100);
+          EditorModule.setCursorAndScroll(node.start_pos);
         }
       });
-
       tokenWrapper.appendChild(valueWrapper);
       labelRow.appendChild(tokenWrapper);
       wrapper.appendChild(labelRow);

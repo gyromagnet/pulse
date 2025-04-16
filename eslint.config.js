@@ -2,7 +2,6 @@ import js from '@eslint/js';
 import globals from 'globals';
 import json from '@eslint/json';
 import markdown from '@eslint/markdown';
-import css from '@eslint/css';
 import { defineConfig } from 'eslint/config';
 
 export default defineConfig([
@@ -21,10 +20,9 @@ export default defineConfig([
   },
   {
     files: ['**/*.json'],
+    ignores: ['.stylelintrc.json', 'package-lock.json'],
     plugins: { json },
-    languageOptions: {
-      parser: json.parsers['json-parser'],
-    },
+    language: 'json/jsonc',
     rules: {
       ...json.configs.recommended.rules,
     },
@@ -32,21 +30,9 @@ export default defineConfig([
   {
     files: ['**/*.md'],
     plugins: { markdown },
-    languageOptions: {
-      parser: markdown.parsers['markdown-parser'],
-    },
+    language: 'markdown/gfm',
     rules: {
       ...markdown.configs.recommended.rules,
-    },
-  },
-  {
-    files: ['**/*.css'],
-    plugins: { css },
-    languageOptions: {
-      parser: css.parsers['css-parser'],
-    },
-    rules: {
-      ...css.configs.recommended.rules,
     },
   },
 ]);

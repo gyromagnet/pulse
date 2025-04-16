@@ -1,4 +1,3 @@
-
 import { UI } from './ui.js';
 import { TreeModule } from './tree.js';
 import { EditorModule } from './editor.js';
@@ -85,8 +84,8 @@ export const SettingsModule = {
     }
   },
   saveToLocalStorage: function () {
-    localStorage.setItem('lark_grammar', EditorModule.grammarEditor.getValue());
-    localStorage.setItem('lark_input', EditorModule.inputEditor.getValue());
+    localStorage.setItem('lark_grammar', EditorModule.getGrammarValue());
+    localStorage.setItem('lark_input', EditorModule.getInputValue());
   },
   loadFromLocalStorage: async function () {
     const savedGrammar = localStorage.getItem('grammar');
@@ -94,33 +93,42 @@ export const SettingsModule = {
 
     // If both are already stored, just load them
     if (savedGrammar !== null) {
-      EditorModule.grammarEditor.setValue(savedGrammar);
+      // Update the grammar editor via dispatch change.
+      EditorModule.grammarEditor.dispatch({
+        changes: { from: 0, to: EditorModule.grammarEditor.state.doc.length, insert: savedGrammar },
+      });
       console.log('Loaded grammar from localStorage');
     } else {
       // Fetch and load default grammar
       const res = await fetch('grammars/bruker.lark'); // adjust path if needed
       const defaultGrammar = await res.text();
-      EditorModule.grammarEditor.setValue(defaultGrammar);
+      EditorModule.grammarEditor.dispatch({
+        changes: { from: 0, to: EditorModule.grammarEditor.state.doc.length, insert: defaultGrammar },
+      });
       localStorage.setItem('grammar', defaultGrammar);
       console.log('Loaded default grammar');
     }
 
     if (savedPulseCode !== null) {
-      EditorModule.inputEditor.setValue(savedPulseCode);
+      EditorModule.inputEditor.dispatch({
+        changes: { from: 0, to: EditorModule.inputEditor.state.doc.length, insert: savedPulseCode },
+      });
       console.log('Loaded pulse code from localStorage');
     } else {
       // Fetch and load default pulse code
       const res = await fetch('example_code/zg'); // adjust path if needed
       const defaultPulseCode = await res.text();
-      EditorModule.inputEditor.setValue(defaultPulseCode);
+      EditorModule.inputEditor.dispatch({
+        changes: { from: 0, to: EditorModule.inputEditor.state.doc.length, insert: defaultPulseCode },
+      });
       localStorage.setItem('pulseCode', defaultPulseCode);
       console.log('Loaded default pulse code');
     }
   },
   resetWorkspace: function () {
     localStorage.clear();
-    EditorModule.grammarEditor.setValue('');
-    EditorModule.inputEditor.setValue('');
+    EditorModule.setValue(EditorModule.grammarEditor, '');
+    EditorModule.setValue(EditorModule.inputEditor, '');
     UI.showToast('Workspace has been reset. Reloading...', 'success');
     setTimeout(() => location.reload(), 1500);
   },

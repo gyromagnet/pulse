@@ -1,5 +1,6 @@
 import { UI } from './ui.js';
 import { EditorModule } from './editor.js';
+import { TreeModule } from './tree.js';
 import { WorkerModule } from './worker.js';
 import { SettingsModule } from './settings.js';
 
@@ -16,8 +17,8 @@ const App = {
       console.log('No changes detected. Skipping parse.');
       return;
     }
-    const grammar = EditorModule.grammarEditor.getValue();
-    const text = EditorModule.inputEditor.getValue();
+    const grammar = EditorModule.getGrammarValue();
+    const text = EditorModule.getInputValue();
     const start = document.getElementById('startInput').value || 'start';
     const parserType = document.getElementById('parserSelect').value;
     const lexer = document.getElementById('lexerSelect').value;
@@ -30,18 +31,20 @@ const App = {
   },
 
   hasContentChanged: function () {
-    const currentGrammar = EditorModule.grammarEditor.getValue();
-    const currentInput = EditorModule.inputEditor.getValue();
+    const currentGrammar = EditorModule.getGrammarValue();
+    const currentInput = EditorModule.getInputValue();
     return currentGrammar !== this._lastGrammar || currentInput !== this._lastInput;
   },
 
   initialize: async function () {
-    // Initialize editors and attach their event handlers
     await EditorModule.initEditors();
+    // Attach double-click listener so that when text is double-clicked, the tree node scrolls into view.
+    EditorModule.inputEditor.dom.addEventListener('dblclick', UI.handleDoubleClickOnInput);
+
     window.addEventListener('resize', EditorModule.resizeEditors);
     EditorModule.resizeEditors();
 
-    // Vertical resizer for editors
+    // (The rest of your initialization code remains unchanged.)
     const grammarBlock = document.getElementById('grammar-block');
     const inputBlock = document.getElementById('input-block');
     const divider = document.getElementById('vertical-divider');
@@ -69,7 +72,7 @@ const App = {
       isResizingVert = false;
     });
 
-    // Horizontal column resizer
+    // Horizontal resizer for left pane.
     const leftPane = document.getElementById('left-pane');
     const colResizer = document.getElementById('column-divider');
     const container = document.querySelector('.split-pane');
@@ -93,16 +96,13 @@ const App = {
       document.body.style.cursor = 'default';
     });
 
-    // Settings toggle button
     const settingsToggle = document.getElementById('settingsToggle');
     settingsToggle.addEventListener('click', () => {
       SettingsModule.toggleSettings();
     });
 
-    // Populate example menus and attach click events
     await App.populateExampleMenus();
 
-    // Attach event listener to the parse button (ID "parseBtn" in HTML)
     const parseBtn = document.getElementById('parseBtn');
     if (parseBtn) {
       parseBtn.addEventListener('click', () => {
@@ -110,12 +110,11 @@ const App = {
       });
     }
 
-    // Attach event listener for submitting parse failure
     const submitBtn = document.getElementById('submitDownloadBtn');
     if (submitBtn) {
       submitBtn.addEventListener('click', () => {
-        const grammar = EditorModule.grammarEditor.getValue();
-        const input = EditorModule.inputEditor.getValue();
+        const grammar = EditorModule.getGrammarValue();
+        const input = EditorModule.getInputValue();
         const title = encodeURIComponent('Parser failed on valid Bruker code');
         const issueBody = `### What happened?
 
@@ -150,7 +149,6 @@ ${grammar}
       });
     }
 
-    // Attach event listeners for collapse/expand buttons if needed.
     const collapseBtn = document.getElementById('collapseAllBtn');
     if (collapseBtn) {
       collapseBtn.addEventListener('click', () => {
@@ -168,20 +166,14 @@ ${grammar}
       });
     }
 
-    // Global functions removed from HTML: instead, wire all file-loading using event listeners.
-    // Here we attach event listeners for file loading for grammar and input examples.
-    // (These are now defined inside populateExampleMenus below.)
-
     SettingsModule.loadFromLocalStorage();
 
-    // Help toggle button event listener
     const helpToggle = document.getElementById('helpToggle');
     helpToggle.addEventListener('click', () => {
       const helpPopover = document.getElementById('helpPopover');
       helpPopover.style.display = helpPopover.style.display === 'block' ? 'none' : 'block';
     });
 
-    // Close popovers on clicking outside of them
     document.addEventListener('click', function (e) {
       const help = document.getElementById('helpPopover');
       const settings = document.getElementById('settingsPopover');
@@ -196,7 +188,6 @@ ${grammar}
       }
     });
 
-    // Advanced settings toggle
     const advToggle = document.getElementById('advancedToggle');
     advToggle.addEventListener('click', () => {
       const section = document.getElementById('advancedSettings');
@@ -224,7 +215,7 @@ ${grammar}
               return response.text();
             })
             .then((data) => {
-              EditorModule.grammarEditor.setValue(data);
+              EditorModule.setValue(EditorModule.grammarEditor, data);
             })
             .catch((err) => {
               alert('Could not load grammar: ' + err.message);
@@ -247,7 +238,7 @@ ${grammar}
               return response.text();
             })
             .then((data) => {
-              EditorModule.inputEditor.setValue(data);
+              EditorModule.setValue(EditorModule.inputEditor, data);
             })
             .catch((err) => {
               alert('Could not load example: ' + err.message);
@@ -258,15 +249,24 @@ ${grammar}
     } catch (error) {
       console.error('Failed to populate example menus:', error);
     }
-  }
+  },
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
   UI.showToast('Loading Pyodide...');
   WorkerModule.init();
   await App.initialize();
+
+  // Listen for changes on the "Include Hidden Tokens" option
+  const showHiddenCheckbox = document.getElementById('showHiddenCheckbox');
+  if (showHiddenCheckbox) {
+    showHiddenCheckbox.addEventListener('change', () => {
+      if (TreeModule.lastParseTree) {
+        TreeModule.renderAndDisplayTree(TreeModule.lastParseTree);
+      }
+    });
+  }
 });
 
 window.App = App;
 export { App };
-

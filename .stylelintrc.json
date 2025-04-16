@@ -1,8 +1,6 @@
 {
-  "extends": [
-    "stylelint-config-standard"
-  ],
+  "extends": ["stylelint-config-standard"],
   "rules": {
-    "css/use-baseline": null
+    "selector-class-pattern": "^([a-z0-9\\-]+)|(CodeMirror)$"
   }
 }

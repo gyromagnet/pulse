@@ -1,8 +1,8 @@
 import { UI } from './ui.js';
-
 import { TreeModule } from './tree.js';
 import { EditorModule } from './editor.js';
 import { App } from './app.js';
+import { Decoration } from '@codemirror/view';
 
 export const WorkerModule = {
   worker: null,
@@ -10,7 +10,7 @@ export const WorkerModule = {
   parseButton: null,
 
   init: function () {
-    this.worker = new Worker('js/parser_worker.js');
+    this.worker = new Worker(new URL('./parser_worker.js', import.meta.url));
 
     this.worker.onerror = (e) => {
       console.error('Worker error:', e);
@@ -38,8 +38,8 @@ export const WorkerModule = {
         TreeModule.lastParseTree = tree;
         TreeModule.renderAndDisplayTree(tree);
         UI.showToast('Parse complete', 'success');
-        App._lastGrammar = EditorModule.grammarEditor.getValue();
-        App._lastInput = EditorModule.inputEditor.getValue();
+        App._lastGrammar = EditorModule.getGrammarValue();
+        App._lastInput = EditorModule.getInputValue();
       } else if (type === 'error') {
         const output = document.getElementById('output');
         output.className = 'error';
@@ -48,22 +48,24 @@ export const WorkerModule = {
         const match = message.match(/line (\d+)[^\d]*column (\d+)/i);
         if (match) {
           const [_, lineStr, colStr] = match;
-          const line = parseInt(lineStr, 10) - 1;
-          const col = parseInt(colStr, 10) - 1;
-          const from = { line, ch: col };
-          const to = { line, ch: col + 3 };
-          EditorModule.inputEditor.setCursor(from);
-          EditorModule.inputEditor.scrollIntoView(from, 100);
-          if (UI.errorHighlight) UI.errorHighlight.clear();
-          UI.errorHighlight = EditorModule.inputEditor.markText(from, to, {
-            className: 'highlighted-error-text',
-          });
+          const lineNum = parseInt(lineStr, 10);
+          const col = parseInt(colStr, 10);
+          try {
+            const lineObj = EditorModule.inputEditor.state.doc.line(lineNum);
+            const pos = lineObj.from + col;
+            EditorModule.setCursorAndScroll(pos);
+          } catch (e) {
+            console.error('Error converting line/column to position', e);
+          }
+          if (UI.errorHighlight) {
+            EditorModule.inputEditor.dispatch({
+              effects: EditorModule.setHighlightEffect.of(Decoration.none),
+            });
+            UI.errorHighlight = null;
+          }
         }
-
-        // Reset to force reparse next time
         App._lastGrammar = '';
         App._lastInput = '';
-
         UI.showToast(message, 'error');
       }
     };

@@ -1,4 +1,5 @@
 /* eslint-env worker */
+/* global importScripts, loadPyodide */
 
 let pyodide = null;
 let isReady = false;
@@ -13,7 +14,7 @@ async function loadPyodideAndPackages() {
     await micropip.install("lark")
   `);
 
-  const parseRunnerCode = await fetch('../py/parse_runner.py').then((res) => res.text());
+  const parseRunnerCode = await fetch('./py/parse_runner.py').then((res) => res.text());
   await pyodide.runPythonAsync(parseRunnerCode);
 
   isReady = true;
@@ -47,7 +48,7 @@ self.onmessage = async (event) => {
     let message = err.message || String(err);
     try {
       message = pyodide.runPython(`str(${err.name}) + ": " + str(${err})`);
-    } catch (_err) {
+    } catch {
       // intentionally ignored
     }
     self.postMessage({ type: 'error', message });
