@@ -10,8 +10,8 @@ export const SettingsModule = {
     'debug',
     'strict',
     'start',
-    'compress_tree',
-    'show_hidden',
+    'compressTree',
+    'showHidden',
     'grammarHeight',
     'inputHeight',
     'enableAdvanced',
@@ -50,8 +50,8 @@ export const SettingsModule = {
       debug: false,
       strict: false,
       start: 'pulseprogram',
-      compress_tree: true,
-      show_hidden: false,
+      compressTree: true,
+      showHidden: false,
     };
 
     this.settingsKeys.forEach((key) => {
@@ -87,15 +87,15 @@ export const SettingsModule = {
       const val = el.type === 'checkbox' ? el.checked : el.value;
       localStorage.setItem(key, val);
 
-      if (['compress_tree', 'show_hidden'].includes(key) && TreeModule.lastParseTree) {
+      if (['compressTree', 'showHidden'].includes(key) && TreeModule.lastParseTree) {
         TreeModule.renderAndDisplayTree(TreeModule.lastParseTree);
       }
     });
   },
 
   saveToLocalStorage() {
-    localStorage.setItem('lark_grammar', EditorModule.getGrammarValue());
-    localStorage.setItem('lark_input', EditorModule.getInputValue());
+    localStorage.setItem('larkGrammar', EditorModule.getGrammarValue());
+    localStorage.setItem('larkInput', EditorModule.getInputValue());
   },
 
   async loadFromLocalStorage() {

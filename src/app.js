@@ -170,6 +170,12 @@ const App = {
         TreeModule.renderAndDisplayTree(TreeModule.lastParseTree);
       }
     });
+
+    document.getElementById('compress-checkbox')?.addEventListener('change', () => {
+      if (TreeModule.lastParseTree) {
+        TreeModule.renderAndDisplayTree(TreeModule.lastParseTree);
+      }
+    });
   },
 
   async populateExampleMenus() {

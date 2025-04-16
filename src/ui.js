@@ -66,8 +66,8 @@ export const UI = {
   },
 
   findDeepestNode: function (node, index) {
-    if (node.start_pos == null || node.end_pos == null) return null;
-    if (index < node.start_pos || index >= node.end_pos) return null;
+    if (node.startPos == null || node.endPos == null) return null;
+    if (index < node.startPos || index >= node.endPos) return null;
 
     const showHidden = getEl('showHiddenCheckbox')?.checked;
     if (showHidden && node.hidden) return node;
@@ -83,15 +83,15 @@ export const UI = {
   },
 
   getFullySelectedNodes: function (node, selFrom, selTo) {
-    if (node.start_pos == null || node.end_pos == null) return [];
-    if (selFrom <= node.start_pos && node.end_pos <= selTo) {
+    if (node.startPos == null || node.endPos == null) return [];
+    if (selFrom <= node.startPos && node.endPos <= selTo) {
       if (node.children?.length > 0) {
         const allChildrenSelected = node.children.every(
           (child) =>
-            child.start_pos != null &&
-            child.end_pos != null &&
-            selFrom <= child.start_pos &&
-            child.end_pos <= selTo,
+            child.startPos != null &&
+            child.endPos != null &&
+            selFrom <= child.startPos &&
+            child.endPos <= selTo,
         );
         return allChildrenSelected
           ? [node]
@@ -136,12 +136,12 @@ export const UI = {
         if (
           focusedNode.type === 'token' &&
           focusedNode._textWrapper &&
-          focusedNode.start_pos != null
+          focusedNode.startPos != null
         ) {
           const cursorEl = document.createElement('span');
           cursorEl.className = 'tree-cursor';
           const charWidth = 7;
-          const offset = Math.max(0, cursorIndex - focusedNode.start_pos);
+          const offset = Math.max(0, cursorIndex - focusedNode.startPos);
           cursorEl.style.left = `${offset * charWidth + 12}px`;
           focusedNode._textWrapper.appendChild(cursorEl);
           UI.treeCursorEl = cursorEl;
