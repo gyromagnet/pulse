@@ -30,28 +30,6 @@ export const TreeModule = {
     this.collectTreeNodes(tree);
   },
 
-  compressTree(node) {
-    if (node.type !== 'rule') return node;
-    let nameChain = [node.name];
-    let current = node;
-    while (current.children?.length === 1 && current.children[0].type === 'rule') {
-      current = current.children[0];
-      nameChain.push(current.name);
-    }
-    const compressedChildren = current.children.map(this.compressTree.bind(this));
-    const childStart = compressedChildren.map((c) => c.startPos).filter((p) => p != null);
-    const childEnd = compressedChildren.map((c) => c.endPos).filter((p) => p != null);
-    const startPos = Math.min(...childStart, node.startPos ?? Infinity);
-    const endPos = Math.max(...childEnd, current.endPos ?? -1);
-    return {
-      type: 'rule',
-      name: nameChain.join(' > '),
-      children: compressedChildren,
-      startPos,
-      endPos,
-    };
-  },
-
   collectTreeNodes(node) {
     if (node.startPos != null && node.endPos != null && node._domElement) {
       this.treeNodeList.push(node);
@@ -89,18 +67,14 @@ export const TreeModule = {
       }
     }
 
-    if (node.type === 'rule' && displayNode.children?.length) {
+    if (node.type === 'rule' && displayNode.children?.length > 0) {
       // Collapse icon
       const collapseIcon = document.createElement('span');
       collapseIcon.className = 'collapse-toggle-icon';
       collapseIcon.textContent = '▼';
+      collapseIcon.title = 'Expand/collapse children';
+      collapseIcon.style.cursor = 'pointer'; // <--- Added
       collapseIcon.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (e.detail === 1) {
-          wrapper.classList.toggle('collapsed');
-        }
-      });
-      collapseIcon.addEventListener('dblclick', (e) => {
         e.stopPropagation();
         if (e.detail === 1) {
           wrapper.classList.toggle('collapsed');

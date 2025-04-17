@@ -44,6 +44,13 @@ export const UI = {
     const idx = EditorModule.inputEditor.state.selection.main.from;
     const match = UI.findDeepestNode(TreeModule.lastParseTree, idx);
     if (match && match._domElement) {
+      // Ensure parent nodes are expanded before scrolling
+      let el = match._domElement;
+      while (el && el.classList) {
+        el.classList.remove('collapsed');
+        el = el.parentElement?.closest('.tree-node');
+      }
+
       match._domElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
       match._domElement.classList.add('selected-tree-node');
       setTimeout(() => match._domElement.classList.remove('selected-tree-node'), 1000);
@@ -122,11 +129,20 @@ export const UI = {
     const showHidden = getEl('show-hidden-checkbox')?.checked;
 
     if (node.hidden && !showHidden) {
-      // hidden‐token horizontal line
-      const cursorLine = document.createElement('div');
-      cursorLine.className = 'tree-cursor tree-cursor-line';
-      node._domElement.appendChild(cursorLine);
-      UI.treeCursorEl = cursorLine;
+      const placeholder = node._domElement;
+
+      // Look for the nearest visible sibling or parent to anchor to
+      let anchor = placeholder;
+      while (anchor && !anchor.offsetParent) {
+        anchor = anchor.parentElement;
+      }
+
+      if (anchor) {
+        const cursorLine = document.createElement('div');
+        cursorLine.className = 'tree-cursor tree-cursor-line';
+        anchor.appendChild(cursorLine);
+        UI.treeCursorEl = cursorLine;
+      }
       return;
     }
 
