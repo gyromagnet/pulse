@@ -11,6 +11,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "check-build": "vite build --outDir .vite-test && rm -rf .vite-test",
     "serve": "vite preview",
     "lint": "eslint . --ext .js,.mjs,.cjs,.ts,.tsx",
     "lint:fix": "eslint . --ext .js,.mjs,.cjs,.ts,.tsx --fix",
