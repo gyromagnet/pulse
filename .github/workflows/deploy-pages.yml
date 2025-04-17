@@ -10,10 +10,14 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
-      pages: write
-      id-token: write
+      pages: write # allow the Pages action to publish
+      contents: write # allow checkout/push back to repo
+      id-token: write # needed if you do OIDC auth (not strictly for Pages)
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: true # use GITHUB_TOKEN for any git push
+          fetch-depth: 0 # full history, so gh-pages branch is visible
       - uses: actions/setup-node@v4
         with: { node-version: "18" }
       - run: npm ci
