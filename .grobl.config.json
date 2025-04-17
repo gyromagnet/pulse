@@ -1,15 +1,14 @@
 {
-  "exclude_tree": [
-    "public/example_code/",
-    "public/grammars/",
+  "exclude_tree": [".venv/", ".git/", "__pycache__", ".pytest_cache/", "node_modules/*"],
+  "exclude_print": [
+    "public/example_code/*",
+    "public/grammars/*",
     "docs/",
     "*.egg-info",
     "*.ipynb",
-    ".git/",
     ".gitignore",
     ".gitmodules",
     ".groblignore",
-    ".pytest_cache/",
     ".python-version",
     "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
@@ -17,9 +16,9 @@
     ".coverage.xml",
     "ruff.default.toml",
     "uv.lock",
-    "yarn.lock"
+    "yarn.lock",
+    "package-lock.json"
   ],
-  "exclude_print": ["*.json", "*.html"],
   "include_tree_tags": "tree",
   "include_file_tags": "file"
 }
