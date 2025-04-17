@@ -4,6 +4,7 @@ This file tracks prioritized improvements and known issues for the Pulse Program
 
 ## Bugs
 
+- [ ] figure out if the pre-commit and pre-push hooks are working
 - [ ] Improve error message parsing; replace fragile regex with structured output from Python.
 - [ ] Fix pane resizing layout glitches on smaller screens (mobile-safe).
 
