@@ -68,6 +68,19 @@ export const SettingsModule = {
         el.value = value;
       }
 
+      // highlight non-default
+      const container = el.closest('.setting-item');
+      function updateDirty() {
+        const current = el.type === 'checkbox' ? el.checked : el.value;
+        if (current.toString() !== defaults[key].toString()) {
+          container?.classList.add('setting-dirty');
+        } else {
+          container?.classList.remove('setting-dirty');
+        }
+      }
+      updateDirty();
+      el.addEventListener('change', updateDirty);
+
       el.addEventListener('change', () => {
         localStorage.setItem(key, el.type === 'checkbox' ? el.checked : el.value);
         if (['compressTree', 'showHidden'].includes(key) && TreeModule.lastParseTree) {

@@ -129,18 +129,32 @@ export const UI = {
     const showHidden = getEl('show-hidden-checkbox')?.checked;
 
     if (node.hidden && !showHidden) {
-      const placeholder = node._domElement;
-
-      // Look for the nearest visible sibling or parent to anchor to
-      let anchor = placeholder;
-      while (anchor && !anchor.offsetParent) {
+      // Find the rule‑node container that _would_ have held this token
+      let anchor = node._domElement;
+      // climb up until we hit a displayed .tree-node
+      while (
+        (anchor && !(anchor instanceof HTMLElement)) ||
+        (anchor && !anchor.classList.contains('tree-node'))
+      ) {
         anchor = anchor.parentElement;
       }
-
+      // now draw the horizontal line at that anchor’s top offset
       if (anchor) {
+        const rect = anchor.getBoundingClientRect();
+        const parentRect = anchor.parentElement.getBoundingClientRect();
+        const y = rect.top - parentRect.top;
+
         const cursorLine = document.createElement('div');
         cursorLine.className = 'tree-cursor tree-cursor-line';
-        anchor.appendChild(cursorLine);
+        cursorLine.style.position = 'absolute';
+        cursorLine.style.top = `${y}px`;
+        cursorLine.style.left = '0';
+        // make it span the full width of the tree‐children container
+        cursorLine.style.width = '100%';
+
+        // attach into the .tree-children wrapper
+        anchor.parentElement.style.position = 'relative';
+        anchor.parentElement.appendChild(cursorLine);
         UI.treeCursorEl = cursorLine;
       }
       return;

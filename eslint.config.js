@@ -19,7 +19,7 @@ export default defineConfig([
   },
   {
     files: ['src/**/*.{js,ts,tsx,mjs,cjs}'],
-    ignores: ['vite.config.js'],
+    ignores: ['vite.config.js', 'docs/**/*'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
@@ -81,7 +81,7 @@ export default defineConfig([
   },
   {
     files: ['**/*.json'],
-    ignores: ['.stylelintrc.json', 'package-lock.json'],
+    ignores: ['.stylelintrc.json', 'package-lock.json', 'docs/**/*'],
     plugins: { json },
     language: 'json/jsonc',
     rules: {
@@ -90,6 +90,7 @@ export default defineConfig([
   },
   {
     files: ['**/*.md'],
+    ignores: ['docs/**/*'],
     plugins: { markdown },
     language: 'markdown/gfm',
     rules: {

@@ -184,6 +184,7 @@ const App = {
         a.download = 'parse-tree.json';
         a.click();
         URL.revokeObjectURL(url);
+        UI.showToast('Export complete', 'success');
       }
     });
 
@@ -199,6 +200,19 @@ const App = {
     });
     document.getElementById('compress-checkbox')?.addEventListener('change', () => {
       if (TreeModule.lastParseTree) TreeModule.renderAndDisplayTree(TreeModule.lastParseTree);
+    });
+
+    // ESC key closes any open popover
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.popover').forEach((p) => p.classList.add('hidden'));
+      }
+    });
+    // clicking the × closes its popover
+    document.querySelectorAll('.popover-close').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        btn.closest('.popover')?.classList.add('hidden');
+      });
     });
   },
 

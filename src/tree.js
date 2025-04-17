@@ -123,6 +123,7 @@ export const TreeModule = {
       });
     } else if (node.type === 'token') {
       if (node.hidden && !showHidden) {
+        // don’t render anything for hidden tokens
         return document.createDocumentFragment();
       }
 

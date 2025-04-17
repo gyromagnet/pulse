@@ -60,9 +60,17 @@ export const WorkerModule = {
   _handleParseError(message) {
     const output = document.getElementById('output');
     output.className = 'error';
-    output.textContent = message;
+    const isGrammarError = /^[A-Za-z]+(?:Error|Exception):/.test(message);
+    const summaryText = isGrammarError ? 'Grammar Error' : 'Runtime Error';
+    output.innerHTML = `
+      <details>
+        <summary>${summaryText}</summary>
+        <pre>${message}</pre>
+      </details>
+    `;
 
-    const match = message.match(/line (\d+)[^\d]*column (\d+)/i);
+    // attempt to extract line/column for cursor positioning
+    const match = message.match(/line (\\d+)[^\\d]*column (\\d+)/i);
     if (match) {
       const lineNum = parseInt(match[1], 10);
       const col = parseInt(match[2], 10);

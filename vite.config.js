@@ -3,8 +3,9 @@ import { defineConfig } from 'vite';
 import path from 'path';
 
 export default defineConfig({
+  base: '/pulse/',
   build: {
-    outDir: 'dist',
+    outDir: 'docs',
   },
   resolve: {
     alias: {
