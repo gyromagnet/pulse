@@ -53,4 +53,6 @@ repos:
         entry: npm
         language: system
         stages: [pre-push]
+        pass_filenames: false # ← don’t append file names
+        always_run: true # ← run even if no files matched
         args: [run, build]
