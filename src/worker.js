@@ -11,7 +11,17 @@ export const WorkerModule = {
   init() {
     this.worker = new Worker(new URL('./parser_worker.js', import.meta.url));
 
-    this.worker.onerror = this._handleWorkerError;
+    this.worker = new Worker(new URL('./parser_worker.js', import.meta.url));
+
+    // more verbose error handling
+    this.worker.addEventListener('error', (e) => {
+      console.error('Parser worker threw:', e.error || e.message, e);
+      UI.showToast(`❌ Parser worker error: ${e.message}`, 'error');
+    });
+    this.worker.addEventListener('messageerror', (e) => {
+      console.error('Parser worker messageerror:', e);
+      UI.showToast('❌ Parser worker message error', 'error');
+    });
 
     this.parseButton = document.querySelector('.output-header button');
     if (this.parseButton) {
@@ -23,12 +33,12 @@ export const WorkerModule = {
   },
 
   _handleWorkerError(e) {
-    console.error('Worker error:', e);
-    UI.showToast('❌ Failed to load parser worker', 'error');
+    console.error('Worker error:', e.message || e);
+    UI.showToast(`❌ Parser worker failed: ${e.message || '[no message]'}`, 'error');
   },
 
   _handleWorkerMessage({ data }) {
-    const { type, tree, message } = data;
+    const { type, tree, _message } = data;
 
     switch (type) {
       case 'ready':
@@ -49,7 +59,14 @@ export const WorkerModule = {
         break;
 
       case 'error':
-        this._handleParseError(message);
+        // this._handleParseError(message);
+        console.error(
+          `Parser worker error:\n`,
+          `  message: ${data.message}\n`,
+          data.filename ? `  file:    ${data.filename}\n` : '',
+          data.lineno ? `  line:    ${data.lineno}:${data.colno || ''}` : '',
+        );
+        UI.showToast(`❌ Parser worker error: ${data.message}`, 'error');
         break;
 
       default:
