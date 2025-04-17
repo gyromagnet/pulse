@@ -1,38 +1,56 @@
 repos:
+  # 1) Ruff for Python linting/formatting in src/py
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    # Ruff version.
     rev: v0.11.5
     hooks:
-      # Run the linter.
       - id: ruff
-        args: [./src/py]
-      # Run the formatter.
+        args: [src/py]
       - id: ruff-format
-        args: [./src/py]
+        args: [src/py]
 
+  # 2) Built‑in YAML linter
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  # 3) Node‑based checks (ESLint, Stylelint, Prettier, plus build)
   - repo: local
     hooks:
+      # ESLint for JS/TS/etc.
       - id: eslint
-        args: ['.', '--config', 'eslint.config.js', '--ext', '.js,.mjs,.cjs,.ts,.tsx']
         name: ESLint
         entry: eslint
         language: system
-        files: \.(js|mjs|cjs|jsx|ts|tsx|json|md)$
-
-  - repo: local
-    hooks:
+        files: \.(js|mjs|cjs|jsx|ts|tsx)$
+        args:
+          - --config=eslint.config.js
+          - --ext=.js,.mjs,.cjs,.ts,.tsx
+          - .
+      # Stylelint for CSS/SCSS/HTML/TSX
       - id: stylelint
-        args: ['--config', './stylelint.config.js', '**/*.{css,scss,html,tsx}']
         name: stylelint
         entry: stylelint
         language: system
         files: \.(css|scss|html|tsx)$
-
-  - repo: local
-    hooks:
+        args:
+          - --config=stylelint.config.js
+          - --fix
+      # Prettier for formatting catch‑all
       - id: prettier
-        args: ['--config', './.prettierrc', '--write']
-        name: prettier
+        name: Prettier
         entry: prettier
         language: system
-        files: ^(index.html|eslint.config.js|package.json|stylelint.config.js|tsconfig.json|vite.config.js)|((src/|public/).*\.(js|mjs|cjs|jsx|ts|tsx|css|scss|json|html))$
+        files: \.(js|mjs|cjs|jsx|ts|tsx|css|scss|json|md|html)$
+        args:
+          - --config=.prettierrc
+          - --write
+      # Build on push only
+      - id: npm-build
+        name: npm run build
+        entry: npm
+        language: system
+        stages: [pre-push]
+        args: [run, build]
