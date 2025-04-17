@@ -1,0 +1,668 @@
+#  PULSE PROGRAM
+                                 pulseprogram : statement_sequence phase_program
+
+                                phase_program : LINE_BREAK* (phase_program_line (LINE_BREAK+ phase_program_line)* LINE_BREAK*)?
+                           phase_program_line : _WS* comment
+                                              | _WS+
+                                              | pp_statement
+                                              | _WS* phase_program_statement _WS* comment?
+
+                           statement_sequence : LINE_BREAK* (pulprog_line (LINE_BREAK+ pulprog_line)* LINE_BREAK*)?
+                                 pulprog_line : _WS* line_label_application? _newline_literal_separated_statement_sequence comment?
+                                              | _WS* line_label_application comment?
+                                              | _WS* comment
+                                              | _WS+
+                                              | pp_statement
+_newline_literal_separated_statement_sequence : (NEWLINE_LITERAL _WS*)* _runtime_statement (_WS* (NEWLINE_LITERAL _WS*)+ _runtime_statement)* _WS* (NEWLINE_LITERAL _WS*)*
+                           _runtime_statement : relation_statement
+                                              | core_statement
+ 
+#  LINE LABELS
+                       line_label_application : _numeric_line_label _WS+
+                                              | _identifier_line_label COMMA _WS*
+                                   line_label : _numeric_line_label
+                                              | _identifier_line_label
+                          _numeric_line_label : UNSIGNED_INTEGER
+                       _identifier_line_label : WORD
+ 
+#  CORE - statements
+#  CORE
+                               core_statement : core_command_sequence
+                                              | core_aligned_command_group
+                                              | core_subroutine_definition_statement
+                                              | core_variable_declaration_statement
+                                              | core_if_statement
+                                              | manifest_append_statement
+                                              | prosol_command
+                                              | aqseq_command
+                                              | gc_control_command
+
+                           gc_control_command : "gc_control" (_WS* eol)* _WS* core_code_block
+                               prosol_command : "prosol" _WS+ "relations" _WS* EQUAL_SIGN _WS* LEFT_ANGLE _WS* WORD _WS* RIGHT_ANGLE
+                                aqseq_command : "aqseq" _WS+ DIGIT+
+
+                        core_command_sequence : (core_concatenable_command | core_command_group) (_WS+ (core_concatenable_command | core_command_group))* (_WS+ gc_control_command)?
+                           core_command_group : LEFT_PARENTHESIS core_concatenable_command (_WS+ core_concatenable_command)* RIGHT_PARENTHESIS core_postfix_colon_modifier?
+                   core_aligned_command_group : "(" ews? (core_alignment_tag ews? core_command_group) (ews (                        core_command_group))* ews? ")"
+                                              | "(" ews? (core_alignment_tag ews? core_command_group) (ews (core_alignment_tag ews? core_command_group))* ews? ")"
+
+                    core_concatenable_command : core_expression core_postfix_colon_modifier*
+                                              | file_command
+                                              | mc_command
+                                              | lo_to_command
+                                              | grad_command
+                                              | core_bit_flip_command
+                                              | frequency_assignment_command
+                                              | amplitude_assignment_command
+                                              | rcyc_command
+                                              | power_assignment_command
+                                              | go_command
+
+#  CORE - unique commands
+                 frequency_assignment_command : "fq" _WS* ASSIGNMENT_OPERATOR core_primary_expression (_WS* frequency_modifier)? core_postfix_colon_modifier*
+                           frequency_modifier : LEFT_PARENTHESIS ("bf" | "sfo") _WS+ ("hz" | "ppm") RIGHT_PARENTHESIS
+
+                 amplitude_assignment_command : "amp" _WS* ASSIGNMENT_OPERATOR WORD core_postfix_colon_modifier*
+                                 rcyc_command : RCYC _WS* ASSIGNMENT_OPERATOR line_label
+
+                     power_assignment_command : "pl" _WS* ASSIGNMENT_OPERATOR (core_primary_expression | number) power_modifier core_postfix_colon_modifier*
+                               power_modifier : LEFT_SQUARE_BRACKET ("Watt"|"dB") RIGHT_SQUARE_BRACKET
+                                   go_command : "go" DIGIT? _WS* ASSIGNMENT_OPERATOR line_label
+                                 file_command : ("wr" | "rf" | "if") DIGIT? _WS+ DATASET_LABEL
+                                   mc_command : "mc" _WS+ DATASET_LABEL _WS+ "to" _WS+ line_label
+                                lo_to_command : "lo" _WS+ "to" _WS+ line_label _WS+ "times" _WS+ core_expression
+                                 grad_command : ("grad" | "grad_ramp" | "grad_shape") core_general_gradient_option_list? core_general_gradient_parameter_list
+                                              | ("grad_off" | "grad_zero_for_gs") core_general_gradient_option_list?
+                        core_bit_flip_command : register _WS* (UNSIGNED_INTEGER | WORD) ((_WS* (set_bit_operator | unset_bit_operator) _WS*) (UNSIGNED_INTEGER | WORD))*
+
+                  core_postfix_colon_modifier : _WS* COLON core_expression
+#
+#  CORE - manifest
+                    manifest_append_statement : /(?s)manifest_append((?!maniefest_end).+)manifest_end/
+ 
+#  CORE - variable declarations
+          core_variable_declaration_statement : core_simple_declaration_statement
+                                              | core_list_declaration_statement
+                                              | core_xwin_nmr_grad_shape_length_statement
+            core_simple_declaration_statement : "define" _WS+ simple_type _WS+ WORD (_WS* EQUAL_SIGN _WS* LEFT_CURLY_BRACE DOLLAR_SIGN WORD RIGHT_CURLY_BRACE)?
+              core_list_declaration_statement : "define" _WS+ core_list_type _WS* WORD _WS* EQUAL_SIGN _WS* LEFT_ANGLE _WS* ((DOLLAR_SIGN? WORD)|FILE_PATH) _WS* RIGHT_ANGLE
+                                              | "define" _WS+ core_list_type _WS* WORD _WS* EQUAL_SIGN _WS* core_list_literal
+                                              | "define" _WS+ core_list_type _WS* core_builtin_gradient_function
+                               core_list_type : "list" _WS* LEFT_ANGLE _WS* simple_type _WS* (COMMA _WS* (UNSIGNED_INTEGER | WORD) _WS*)? RIGHT_ANGLE
+    core_xwin_nmr_grad_shape_length_statement : "lgrad" _WS* core_builtin_gradient_function core_general_gradient_option_list? _WS* EQUAL_SIGN _WS* core_expression
+                            core_list_literal : LEFT_CURLY_BRACE DOLLAR_SIGN WORD RIGHT_CURLY_BRACE
+                                              | LEFT_CURLY_BRACE (list_modifier (_WS* COMMA)? _WS*)? (number | ((SIGN _WS*)? WORD)) (((_WS* COMMA _WS*) | _WS+) (number | ((SIGN _WS*)? WORD)))* RIGHT_CURLY_BRACE
+ 
+#  CORE - variable declarations - speicalized gradient syntax
+         core_general_gradient_parameter_list : _WS* LEFT_CURLY_BRACE (core_general_gradient_axis_parameter_list ((_WS+ | _WS* COMMA _WS*) core_general_gradient_axis_parameter_list)*)? RIGHT_CURLY_BRACE
+    core_general_gradient_axis_parameter_list : grad_expression ((_WS* PIPE _WS*) grad_expression)*
+            core_general_gradient_option_list : _WS* LEFT_ANGLE _WS* (core_general_grad_option ((_WS* COMMA _WS*) core_general_grad_option)* _WS*)? RIGHT_ANGLE
+                     core_general_grad_option : core_named_general_grad_option
+                                              | time
+               core_builtin_gradient_function : core_named_builtin_gradient_function
+                                              | "gauss" unsigned_number
+ 
+#  CORE - subroutines
+         core_subroutine_definition_statement : "subroutine" _WS* core_subroutine_qualified_name _WS* (core_subroutine_declaration_arguments ((_WS* eol)? _WS* core_code_block)?)?
+        core_subroutine_declaration_arguments : LEFT_PARENTHESIS (core_subroutine_declaration_argument ((_WS* COMMA _WS*) core_subroutine_declaration_argument)*)? RIGHT_PARENTHESIS
+         core_subroutine_declaration_argument : core_subroutine_arugment_type _WS+ WORD
+               core_subroutine_qualified_name : WORD core_subroutine_class_name?
+                   core_subroutine_class_name : _WS* COLON _WS* WORD
+                core_subroutine_arugment_type : ("pulse" | "delay" | "loopcounter" | "phase" | "gradient" | "any")
+ 
+#  CORE - flow control
+                            core_if_statement : core_if_block ((_WS* (comment? LINE_BREAK | NEWLINE_LITERAL))* core_else_block)?
+                                core_if_block : "if" _WS* (core_run_time_if_condition | core_compile_time_if_condition) (_WS* (comment? LINE_BREAK | NEWLINE_LITERAL))* _WS* (_runtime_statement | core_code_block)
+                              core_else_block : _WS* "else" (_WS* (comment? LINE_BREAK | NEWLINE_LITERAL))* _WS* (_runtime_statement | core_code_block)
+                   core_run_time_if_condition : DOUBLE_QUOTE _WS* relation _WS* DOUBLE_QUOTE
+                                              | LEFT_PARENTHESIS trigger RIGHT_PARENTHESIS
+               core_compile_time_if_condition : LEFT_PARENTHESIS core_expression ((equality_operator | relational_operator) (core_expression | number))? RIGHT_PARENTHESIS
+                              core_code_block : "{" statement_sequence "}"
+
+# PREPROCESSOR
+                                 pp_statement : pp_include_statement _WS* comment?
+                                              | pp_define_statement
+                                              | pp_empty_statement _WS* comment?
+                                              | pp_undefine_statement _WS* comment?
+                                              | pp_if_statement
+                                              | pp_line_label_statement
+                      pp_line_label_statement : _PP_BLANK _WS+ UNSIGNED_INTEGER _WS+ DOUBLE_QUOTE FILE_PATH DOUBLE_QUOTE (_WS+ UNSIGNED_INTEGER)?
+                           pp_empty_statement : _PP_BLANK
+                         pp_include_statement : _PP_INCLUDE _WS* DOUBLE_QUOTE pp_include_path DOUBLE_QUOTE
+                                              | _PP_INCLUDE _WS* LEFT_ANGLE pp_include_path RIGHT_ANGLE
+                              pp_include_path : FILE_PATH
+                              pp_if_statement : pp_if_block pp_elif_block* pp_else_block? pp_endif_line
+                                  pp_if_block : _PP_IF _WS+ pp_condition (_WS+ comment?)? LINE_BREAK pp_controlled_statements
+                                              | _PP_IFDEF _WS+ WORD (_WS+ comment?)? LINE_BREAK pp_controlled_statements
+                                              | _PP_IFNDEF _WS+ WORD (_WS+ comment?)? LINE_BREAK pp_controlled_statements
+                                pp_elif_block : _PP_ELIF _WS+ pp_condition (_WS+ comment?)? LINE_BREAK pp_controlled_statements
+                                pp_else_block : _PP_ELSE pp_controlled_statements
+                                 pp_condition : pp_expression
+                                pp_endif_line : _PP_ENDIF (_WS+ comment?)?
+                     pp_controlled_statements : statement_sequence
+                        pp_undefine_statement : _PP_UNDEFINE _WS* WORD
+                          pp_define_statement : pp_set_flag_statement (_WS+ comment?)?
+                                              | pp_replacement_statement comment?
+                                              | pp_macro_definition_statement
+                        pp_set_flag_statement : _PP_DEFINE _WS* WORD
+                     pp_replacement_statement : _PP_DEFINE _WS* WORD _WS* pp_define_replacement
+                pp_macro_definition_statement : _PP_DEFINE _WS* WORD LEFT_PARENTHESIS pp_identifier_list? RIGHT_PARENTHESIS _WS* pp_define_replacement
+                           pp_identifier_list : identifier ((_WS* COMMA _WS*) identifier)* (_WS* (COMMA _WS*)? ELLIPSIS)?
+                                              | _WS* ELLIPSIS _WS*
+                                pp_identifier : WORD 
+                        pp_define_replacement : _newline_literal_separated_statement_sequence (xws? _newline_literal_separated_statement_sequence)*
+ 
+                                pp_expression : c_expression
+
+                                    _PP_BLANK : _BOL_HASH
+                                       _PP_IF : _BOL_HASH _WS* "if"
+                                    _PP_IFDEF : _BOL_HASH _WS* "ifdef"
+                                   _PP_IFNDEF : _BOL_HASH _WS* "ifndef"
+                                     _PP_ELIF : _BOL_HASH _WS* "elif"
+                                     _PP_ELSE : _BOL_HASH _WS* "else"
+                                    _PP_ENDIF : _BOL_HASH _WS* "endif"
+                                  _PP_INCLUDE : _BOL_HASH _WS* "include"
+                                   _PP_DEFINE : _BOL_HASH _WS* "define"
+                                 _PP_UNDEFINE : _BOL_HASH _WS* "undef"
+                                    _BOL_HASH : /(?m)^\s*(#)/
+ 
+ 
+
+#  OPERATORS
+                             set_bit_operator : PIPE
+                           unset_bit_operator : CARET
+
+ 
+#  KEYWORDS
+                                  simple_type : "delay"
+                                              | "frequency"
+                                              | "gradient"
+                                              | "loopcounter"
+                                              | "power"
+                                              | "pulse"
+                                              | "shape"
+                                              | "amplitude"
+                                              | "grad_scalar"
+                               !list_modifier : "O"
+                                              | "p"
+                                              | "P"
+                                              | ("bf" | "sfo") _WS+ ("hz" | "ppm")
+                                              | "Watt"
+                                              | "dB"
+                                     register : "setrtp"
+                                              | "setnmr"
+                                              | "ctrlgrad"
+                                              | "gatepulse"
+                                      trigger : "trig" ("pl" | "nl" | "pe" | "ne") DIGIT*
+               core_named_general_grad_option : "object_coord"
+                                              | "ACQ_spatial_phase_1"
+                                              | "ACQ_spatial_phase_2"
+                                              | "r2d"
+                                              | "r3d"
+                                              | "magnet_coord"
+                                              | "2d"
+                                              | "3d"
+         core_named_builtin_gradient_function : "plusminus"
+                                              | "r1d"
+                                              | "r2d"
+                                              | "r3d"
+                                              | "step"
+                                              | "sin"
+                                              | "cos"
+                                              | "sinp"
+                                              | "IMND_FovSat_grad"
+                                              | "IMND_InflowSat_grad"
+                                              | "IMND_InvRecov_grad"
+                                              | "IMND_hft_grad"
+                                              | "PVM_FatSupSpoiler"
+                                              | "PVM_FovSatGrad"
+                                              | "PVM_FovSatSpoiler"
+                                              | "PVM_InFlowSatGrad"
+                                              | "PVM_InFlowSatSpoiler"
+                                              | "slice"
+                           core_alignment_tag : "lalign"
+                                              | "center"
+                                              | "ralign"
+                                              | "refalign"
+                                         RCYC : "rcyc" (DIGIT | "np")?
+ 
+                                DATASET_LABEL : HASH (HASH | DIGIT+)
+                                     ELLIPSIS : "..."
+ 
+ 
+                                    FILE_PATH : DIRECTORY_PATH? FILE_NAME
+                               DIRECTORY_PATH : _ABSOLUTE_DIRECTORY_PATH | _RELATIVE_DIRECTORY_PATH
+                     _ABSOLUTE_DIRECTORY_PATH : FORWARD_SLASH _RELATIVE_DIRECTORY_PATH
+                     _RELATIVE_DIRECTORY_PATH : (FILE_NAME FORWARD_SLASH)+
+                                    FILE_NAME : FILE_NAME_CHAR+
+                               FILE_NAME_CHAR : /[^\/\0<>"]/ | (BACK_SLASH LEFT_ANGLE) | (BACK_SLASH RIGHT_ANGLE) | (BACK_SLASH DOUBLE_QUOTE)
+ 
+
+# Lark grammar for C-style expressions
+# Excludes ternary expressions, casting, sizeof, and structure pointer access
+# removes double-quoted strings as a primitive
+# adds time as a primitive 
+#
+# rules that start with underscores are used to inline single children to avoid excessive nesting
+
+                                 c_expression : _c_assignment_expression
+
+                     _c_assignment_expression : _c_logical_or_expression
+                                              | c_assignment_expression
+                      c_assignment_expression : identifier assignment_operator _c_assignment_expression
+
+                     _c_logical_or_expression : _c_logical_and_expression
+                                              | c_logical_or_expression
+                      c_logical_or_expression : _c_logical_or_expression logical_or_operator _c_logical_and_expression
+
+                    _c_logical_and_expression : _c_bitwise_or_expression
+                                              | c_logical_and_expression
+                     c_logical_and_expression : _c_logical_and_expression logical_and_operator _c_bitwise_or_expression
+
+                     _c_bitwise_or_expression : _c_bitwise_xor_expression
+                                              | c_bitwise_or_expression
+                      c_bitwise_or_expression : _c_bitwise_or_expression bitwise_or_operator _c_bitwise_xor_expression
+
+                    _c_bitwise_xor_expression : _c_bitwise_and_expression
+                                              | c_bitwise_xor_expression
+                     c_bitwise_xor_expression : _c_bitwise_xor_expression bitwise_xor_operator _c_bitwise_and_expression
+
+                    _c_bitwise_and_expression : _c_equality_expression
+                                              | c_bitwise_and_expression
+                     c_bitwise_and_expression : _c_bitwise_and_expression bitwise_and_operator _c_equality_expression
+
+                       _c_equality_expression : _c_relational_expression
+                                              | c_equality_expression
+                        c_equality_expression : _c_equality_expression equality_operator _c_relational_expression
+
+                     _c_relational_expression : _c_bitwise_shift_expression
+                                              | c_relational_expression
+                      c_relational_expression : _c_relational_expression relational_operator _c_bitwise_shift_expression
+
+                  _c_bitwise_shift_expression : _c_additive_expression
+                                              | c_bitwise_shift_expression
+                   c_bitwise_shift_expression : _c_bitwise_shift_expression bitwise_shift_operator _c_additive_expression
+
+                       _c_additive_expression : _c_multiplicative_expression
+                                              | c_additive_expression
+                        c_additive_expression : _c_additive_expression additive_operator _c_multiplicative_expression
+
+                 _c_multiplicative_expression : _c_prefix_expression
+                                              | c_multiplicative_expression
+                  c_multiplicative_expression : _c_multiplicative_expression multiplicative_operator _c_prefix_expression
+
+                         _c_prefix_expression : _c_postfix_expression
+                                              | c_prefix_expression
+                          c_prefix_expression : prefix_mutating_operator _c_postfix_expression
+                                              | _c_prefix_expression_head _c_prefix_expression
+                    _c_prefix_expression_head : prefix_operator
+
+                        _c_postfix_expression : c_primary_expression
+                                              | c_postfix_expression
+                         c_postfix_expression : c_primary_expression postfix_mutating_operator
+                                              | _c_postfix_expression _c_postfix_expression_tail
+                   _c_postfix_expression_tail : c_function_call_expression_tail
+                                              | c_element_access_expression_tail
+                                              | c_dot_access_expression_tail
+
+              c_function_call_expression_tail : LEFT_PARENTHESIS (c_expression | c_expression_list) RIGHT_PARENTHESIS
+             c_element_access_expression_tail : LEFT_SQUARE_BRACKET (c_expression | c_expression_list) RIGHT_SQUARE_BRACKET
+                 c_dot_access_expression_tail : DOT_OPERATOR identifier
+
+                         c_primary_expression : identifier
+                                              | unsigned_number
+                                              | time
+                                              | single_quoted_string_literal
+                                              | c_parenthesized_expression
+                                              | c_array_literal_expression
+
+                   c_parenthesized_expression : LEFT_PARENTHESIS (c_expression WS?)? RIGHT_PARENTHESIS
+                   c_array_literal_expression : LEFT_CURLY_BRACE ((c_expression | c_expression_list) WS?)? RIGHT_CURLY_BRACE
+                            c_expression_list : c_expression (COMMA_OPERATOR c_expression)+
+
+# Lark grammar for core expressions
+#
+# rules that start with underscores are used to inline single children to avoid excessive nesting
+
+                              core_expression : _core_assignment_expression
+
+                  _core_assignment_expression : _core_additive_expression
+                                              | core_assignment_expression
+                   core_assignment_expression : identifier assignment_operator (_core_additive_expression | number)
+
+                    _core_additive_expression : _core_multiplicative_expression
+                                              | core_additive_expression
+                     core_additive_expression : _core_additive_expression additive_operator (_core_multiplicative_expression | unsigned_number)
+
+              _core_multiplicative_expression : _core_prefix_expression
+                                              | core_multiplicative_expression
+               core_multiplicative_expression : _core_multiplicative_expression multiplicative_operator (_core_prefix_expression | number)
+
+                      _core_prefix_expression : _core_postfix_expression
+                                              | core_prefix_expression
+                       core_prefix_expression : prefix_operator _core_prefix_expression
+
+                     _core_postfix_expression : core_primary_expression
+                                              | core_postfix_expression
+                      core_postfix_expression : _core_postfix_expression _core_postfix_expression_tail
+
+                _core_postfix_expression_tail : core_postfix_element_access_expression
+                                              | core_postfix_function_call_expression
+                                              | core_postfix_dot_access_expression
+                                              | core_postfix_exec_incr_operator
+       core_postfix_element_access_expression : LEFT_SQUARE_BRACKET _core_ampersand_separated_expression_list RIGHT_SQUARE_BRACKET
+        core_postfix_function_call_expression : LEFT_PARENTHESIS _core_ampersand_separated_expression_list RIGHT_PARENTHESIS
+           core_postfix_dot_access_expression : DOT_OPERATOR identifier
+                      core_primary_expression : identifier
+                                              | time
+                                              | quoted_string_literal
+                                              | core_parenthesized_expression
+
+    _core_ampersand_separated_expression_list : _core_pipe_separated_expression_list
+                                              | core_ampersand_separated_expression_list
+     core_ampersand_separated_expression_list : _core_ampersand_separated_expression_list (BITWISE_AND_OPERATOR _core_pipe_separated_expression_list   )+
+
+         _core_pipe_separated_expression_list : _core_comma_separated_expression_list
+                                              | core_pipe_separated_expression_list
+          core_pipe_separated_expression_list : _core_pipe_separated_expression_list      (BITWISE_OR_OPERATOR  _core_comma_separated_expression_list  )+
+
+        _core_comma_separated_expression_list : _core_space_separated_expression_list
+                                              | core_comma_separated_expression_list
+         core_comma_separated_expression_list : _core_comma_separated_expression_list    (COMMA_OPERATOR        _core_space_separated_expression_list )+
+
+        _core_space_separated_expression_list : _core_space_separated_expression_item
+                                              | core_space_separated_expression_list
+         core_space_separated_expression_list : _core_space_separated_expression_list     (WS+                  _core_space_separated_expression_item  )+
+
+        _core_space_separated_expression_item : number
+                                              | _core_additive_expression
+
+
+
+                core_parenthesized_expression : LEFT_PARENTHESIS _core_additive_expression RIGHT_PARENTHESIS
+              core_postfix_exec_incr_operator : "^"
+
+# Lark grammar for grad expressions
+#
+# rules that start with underscores are used to inline single children to avoid excessive nesting
+
+                              grad_expression : _grad_additive_expression
+
+                    _grad_additive_expression : _grad_multiplicative_expression
+                                              | grad_additive_expression
+                     grad_additive_expression : _grad_additive_expression additive_operator _grad_multiplicative_expression
+
+              _grad_multiplicative_expression : _grad_prefix_expression
+                                              | grad_multiplicative_expression
+               grad_multiplicative_expression : _grad_multiplicative_expression multiplicative_operator _grad_prefix_expression
+
+                      _grad_prefix_expression : _grad_postfix_expression
+                                              | grad_prefix_expression
+                       grad_prefix_expression : prefix_operator _grad_prefix_expression
+
+                     _grad_postfix_expression : grad_primary_expression
+                                              | grad_postfix_expression
+                      grad_postfix_expression : _grad_postfix_expression _grad_postfix_expression_tail
+
+                _grad_postfix_expression_tail : grad_postfix_element_access_expression
+                                              | grad_postfix_function_call_expression
+                                              | grad_postfix_dot_access_expression
+       grad_postfix_element_access_expression : LEFT_SQUARE_BRACKET grad_expression_list RIGHT_SQUARE_BRACKET
+        grad_postfix_function_call_expression : LEFT_PARENTHESIS grad_expression_list RIGHT_PARENTHESIS
+           grad_postfix_dot_access_expression : DOT_OPERATOR identifier
+
+                      grad_primary_expression : identifier
+                                              | unsigned_number
+                                              | time
+                                              | quoted_string_literal
+                                              | grad_parenthesized_expression
+
+                         grad_expression_list : grad_expression? (COMMA_OPERATOR (grad_expression?))*
+                grad_parenthesized_expression : LEFT_PARENTHESIS  grad_expression_list RIGHT_PARENTHESIS
+
+
+# Lark grammar for phase program expressions
+#
+# rules that start with underscores are used to inline single children to avoid excessive nesting
+
+                      phase_program_statement : basic_phase _WS* EQUAL_SIGN _WS* phase_program_divisor? _phase_array
+                        phase_program_divisor : LEFT_PARENTHESIS (("float" | "degree") _WS* COMMA _WS*)? unsigned_number RIGHT_PARENTHESIS _WS*
+
+
+                                 _phase_array : phase_expression
+                                              | phase_array
+                                  phase_array : phase_expression (ews (phase_expression | phase_parenthesized_expression))+
+
+                             phase_expression : _phase_additive_expression
+
+                   _phase_additive_expression : _phase_multiplicative_expression
+                                              | phase_additive_expression 
+                    phase_additive_expression : _phase_additive_expression additive_operator (_phase_multiplicative_expression | phase_parenthesized_expression)
+
+             _phase_multiplicative_expression : _phase_prefix_expression
+                                              | phase_multiplicative_expression 
+              phase_multiplicative_expression : _phase_multiplicative_expression phase_program_multiplicative_operator (_phase_prefix_expression | phase_parenthesized_expression)
+
+                     _phase_prefix_expression : _phase_list_duplication_expression
+                                              | phase_prefix_expression 
+                      phase_prefix_expression : phase_program_prefix_operator (_phase_prefix_expression | phase_parenthesized_expression)
+
+           _phase_list_duplication_expression : phase_primary_expression
+                                              | phase_list_duplication_expression 
+            phase_list_duplication_expression : _phase_list_duplication_expression phase_program_list_duplication_operator UNSIGNED_INTEGER
+
+                     phase_primary_expression : unsigned_number
+                                              | basic_phase
+                                              | nested_phase_expression
+                      nested_phase_expression : LEFT_CURLY_BRACE _phase_array RIGHT_CURLY_BRACE
+               phase_parenthesized_expression : LEFT_PARENTHESIS phase_expression RIGHT_PARENTHESIS
+
+                phase_program_prefix_operator : "+" | "-"
+        phase_program_multiplicative_operator : MULTIPLY_OPERATOR | DIVIDE_OPERATOR
+      phase_program_list_duplication_operator : "^"
+
+
+                           relation_statement : "\"" ws? relation_sequence ws? "\""
+
+                            relation_sequence : relation (relation_separator relation)*
+                            relation_separator : ws? ";" xws
+
+                                     relation : rel_control_statement
+                                              | c_expression
+
+                        rel_control_statement : rel_if_statement
+                                              | rel_while_statement
+
+                             rel_if_statement : rel_if_block (xws rel_else_block)?
+                                 rel_if_block : "if"    ws? c_parenthesized_expression xws rel_code_block
+                               rel_else_block : "else"                                 xws rel_code_block
+
+                          rel_while_statement : "while" ws? c_parenthesized_expression xws rel_code_block
+                               rel_code_block : "{" xws (relation ((ws? ";" xws) relation)* (ws? ";")? xws)? "}"
+
+
+# KEYWORDS
+                                  basic_phase : "ph" DIGIT DIGIT?
+
+#  COMMENTS
+                                          eol : comment? LINE_BREAK
+                                      comment : single_line_comment
+                                              | block_comment
+                 
+                          single_line_comment : ";" _single_line_comment_content?
+                 _single_line_comment_content : /(?s)[^\n\r]+/
+                 
+                                block_comment : "/*" _block_comment_body? "*/"
+                       !_nested_block_comment : "/*" _block_comment_body? "*/" _WS*
+                          _block_comment_body : (_block_comment_text | _nested_block_comment)+
+                          _block_comment_text : /(((\*(?!\/))|(\/[^\*])|[^\/\*])+)/
+
+
+# CONSTANTS
+                                   identifier : WORD
+                                         time : unsigned_number time_unit
+                                       number : ("+" | "-")? unsigned_number
+                              unsigned_number : UNSIGNED_NUMBER
+
+# NUMBERS
+
+                              UNSIGNED_NUMBER : UNSIGNED_INTEGER | UNSIGNED_FLOAT
+
+                               UNSIGNED_FLOAT : FRACTIONAL EXPONENT?
+                                   FRACTIONAL : /\d*\.\d+/
+                                              | /\d+\./
+                                     EXPONENT : /[eE][+-]?\d+/
+
+                             UNSIGNED_INTEGER : /[0-9]+/
+
+                                    time_unit : seconds | milliseconds | microseconds
+                                      seconds : "s"
+                                 milliseconds : "m" | "ms"
+                                 microseconds : "u" | "us"
+
+
+                        quoted_string_literal : single_quoted_string_literal | double_quoted_string_literal
+                 single_quoted_string_literal : "'" _s_string_contents?  "'"
+                           _s_string_contents : /([^'\\]|(\\.))+/
+                 double_quoted_string_literal : "\"" _d_string_contents?  "\""
+                           _d_string_contents : /([^"\\]|(\\.))+/
+
+# ESCAPE SEQUENCES
+                              escape_sequence : SIMPLE_ESCAPE_SEQUENCE
+                                              | UNICODE_HEX_ESCAPE_SEQUENCE
+                                              | BYTE_HEX_ESCAPE_SEQUENCE
+                                              | BYTE_OCT_ESCAPE_SEQUENCE
+                           ESCAPED_LINE_BREAK : "\\" (LF|CR|(CR LF))
+                       SIMPLE_ESCAPE_SEQUENCE : "\\" /[\'abfrtv"]/
+                  UNICODE_HEX_ESCAPE_SEQUENCE : "\\" ("u" HEX_QUAD | "U" HEX_QUAD HEX_QUAD)
+                     BYTE_HEX_ESCAPE_SEQUENCE : "\\" "x" HEX_CHAR HEX_CHAR
+                                     HEX_QUAD : HEX_CHAR HEX_CHAR HEX_CHAR HEX_CHAR
+                     BYTE_OCT_ESCAPE_SEQUENCE : "\\" OCT_CHAR (OCT_CHAR OCT_CHAR?)?
+
+# OPERATORS
+                    postfix_mutating_operator : INCR_POSTFIX_OPERATOR
+                                              | DECR_POSTFIX_OPERATOR
+                     prefix_mutating_operator : INCR_PREFIX_OPERATOR
+                                              | DECR_PREFIX_OPERATOR
+                              prefix_operator : AFFIRMATION_PREFIX_OPERATOR
+                                              | NEGATION_PREFIX_OPERATOR
+                                              | LOGICAL_NOT_OPERATOR
+                                              | BITWISE_COMPLEMENT_OPERATOR
+                      multiplicative_operator : MULTIPLY_OPERATOR
+                                              | DIVIDE_OPERATOR
+                                              | MODULO_OPERATOR
+                            additive_operator : PLUS_OPERATOR
+                                              | MINUS_OPERATOR
+                          relational_operator : LESS_THAN_OPERATOR
+                                              | LESS_THAN_OR_EQUAL_OPERATOR
+                                              | GREATER_THAN_OPERATOR
+                                              | GREATER_THAN_OR_EQUAL_OPERATOR
+                            equality_operator : EQUAL_OPERATOR
+                                              | NOT_EQUAL_OPERATOR
+                       bitwise_shift_operator : BITWISE_SHIFT_LEFT_OPERATOR
+                                              | BITWISE_SHIFT_RIGHT_OPERATOR
+                         bitwise_and_operator : BITWISE_AND_OPERATOR
+                         bitwise_xor_operator : BITWISE_XOR_OPERATOR
+                          bitwise_or_operator : BITWISE_OR_OPERATOR
+                         logical_and_operator : LOGICAL_AND_OPERATOR
+                          logical_or_operator : LOGICAL_OR_OPERATOR
+                          assignment_operator : ASSIGNMENT_OPERATOR
+                                              | ADD_ASSIGNMENT_OPERATOR
+                                              | SUBTRACT_ASSIGNMENT_OPERATOR
+                                              | MULTIPLY_ASSIGNMENT_OPERATOR
+                                              | DIVIDE_ASSIGNMENT_OPERATOR
+                                              | MODULO_ASSIGNMENT_OPERATOR
+                                              | BITWISE_SHIFT_LEFT_ASSIGNMENT_OPERATOR
+                                              | BITWISE_SHIFT_RIGHT_ASSIGNMENT_OPERATOR
+                                              | BITWISE_AND_ASSIGNMENT_OPERATOR
+                                              | BITWISE_XOR_ASSIGNMENT_OPERATOR
+                                              | BITWISE_OR_ASSIGNMENT_OPERATOR
+
+
+                                         SIGN : PLUS | HYPHEN
+
+                       INCR_PREFIX_OPERATOR.1 : "++" WS*
+                       DECR_PREFIX_OPERATOR.1 : "--" WS*
+                      INCR_POSTFIX_OPERATOR.1 : WS* "++"
+                      DECR_POSTFIX_OPERATOR.1 : WS* "--"
+                       LOGICAL_AND_OPERATOR.1 : WS* "&&" WS*
+                        LOGICAL_OR_OPERATOR.1 : WS* "||" WS*
+                             EQUAL_OPERATOR.1 : WS* "==" WS*
+                         NOT_EQUAL_OPERATOR.1 : WS* "!=" WS*
+                LESS_THAN_OR_EQUAL_OPERATOR.1 : WS* "<=" WS*
+             GREATER_THAN_OR_EQUAL_OPERATOR.1 : WS* ">=" WS*
+                BITWISE_SHIFT_LEFT_OPERATOR.1 : WS* "<<" WS*
+               BITWISE_SHIFT_RIGHT_OPERATOR.1 : WS* ">>" WS*
+
+                         BITWISE_XOR_OPERATOR : WS* "^" WS*
+                           LESS_THAN_OPERATOR : WS* "<" WS*
+                        GREATER_THAN_OPERATOR : WS* ">" WS*
+                                PLUS_OPERATOR : WS* "+" WS*
+                               MINUS_OPERATOR : WS* "-" WS*
+                            MULTIPLY_OPERATOR : WS* "*" WS*
+                              DIVIDE_OPERATOR : WS* "/" WS*
+                              MODULO_OPERATOR : WS* "%" WS*
+                     NEGATION_PREFIX_OPERATOR : "-" WS*
+                  AFFIRMATION_PREFIX_OPERATOR : "+" WS*
+                         LOGICAL_NOT_OPERATOR : WS* "!" WS*
+                  BITWISE_COMPLEMENT_OPERATOR : WS* "~" WS*
+                                 DOT_OPERATOR : WS* "." WS*
+                               COMMA_OPERATOR : WS* "," WS*
+                             LEFT_PARENTHESIS : "(" WS*
+                            RIGHT_PARENTHESIS : WS* ")"
+                          LEFT_SQUARE_BRACKET : "[" WS*
+                         RIGHT_SQUARE_BRACKET : WS* "]"
+                             LEFT_CURLY_BRACE : "{" WS*
+                            RIGHT_CURLY_BRACE : WS* "}"
+                         BITWISE_AND_OPERATOR : WS* "&" WS*
+                          BITWISE_OR_OPERATOR : WS* "|" WS*
+
+                          ASSIGNMENT_OPERATOR : "=" WS*
+                    ADD_ASSIGNMENT_OPERATOR.1 : "+=" WS*
+               SUBTRACT_ASSIGNMENT_OPERATOR.1 : "-=" WS*
+               MULTIPLY_ASSIGNMENT_OPERATOR.1 : "*=" WS*
+                 DIVIDE_ASSIGNMENT_OPERATOR.1 : "/=" WS*
+                 MODULO_ASSIGNMENT_OPERATOR.1 : "%=" WS*
+     BITWISE_SHIFT_LEFT_ASSIGNMENT_OPERATOR.1 : "<<=" WS*
+    BITWISE_SHIFT_RIGHT_ASSIGNMENT_OPERATOR.1 : ">>=" WS*
+            BITWISE_AND_ASSIGNMENT_OPERATOR.1 : "&=" WS*
+            BITWISE_XOR_ASSIGNMENT_OPERATOR.1 : "^=" WS*
+             BITWISE_OR_ASSIGNMENT_OPERATOR.1 : "|=" WS*
+
+
+# CHARACTER CLASSES
+                                   LINE_BREAK : WS* (LF|CR|(CR LF)) WS* # unix | old macos | windows
+
+                                          xws : (ws? (ESCAPED_LINE_BREAK ws?)*)
+                                          ews : _WS+ | (_WS* eol)+
+                                           ws : _WS+
+                                          _WS : WS
+                                           WS : UNICODE_ZS | "\t"
+                                   UNICODE_ZS : /[\u0020\u00A0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F\u3000]/
+
+                                         WORD : /[_a-zA-Z][_a-zA-Z0-9]*/
+                                        DIGIT : /[0-9]/
+                                     HEX_CHAR : /[0-9a-zA-Z]/
+                                     OCT_CHAR : /[0-7]/
+# CHARACTERS
+                              NEWLINE_LITERAL : "\\n"
+
+                                         HASH : "#"
+                                   EQUAL_SIGN : "="
+                                   LEFT_ANGLE : "<"
+                                  RIGHT_ANGLE : ">"
+                                        COMMA : ","
+                                        COLON : ":"
+                                 DOUBLE_QUOTE : "\""
+                                  DOLLAR_SIGN : "$"
+                                        CARET : "^"
+                                       HYPHEN : "-"
+                                         PLUS : "+"
+                                         PIPE : "|"
+                                   BACK_SLASH : "\\"
+                                    SEMICOLON : ";"
+                                FORWARD_SLASH : "/"
+
+                                           LF : "\u000a"
+                                           CR : "\u000d"
+                                          TAB : "\u0009"
