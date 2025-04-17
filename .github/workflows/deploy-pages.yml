@@ -19,7 +19,7 @@ jobs:
           persist-credentials: true # use GITHUB_TOKEN for any git push
           fetch-depth: 0 # full history, so gh-pages branch is visible
       - uses: actions/setup-node@v4
-        with: { node-version: "18" }
+        with: { node-version: '18' }
       - run: npm ci
       - run: npm run build
       - name: Deploy to GitHub Pages

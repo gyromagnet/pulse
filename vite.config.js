@@ -15,4 +15,5 @@ export default defineConfig({
     },
   },
   dedupe: ['@codemirror/state', '@codemirror/view'],
+  assetsInclude: ['**/*.py'],
 });

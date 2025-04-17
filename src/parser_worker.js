@@ -22,7 +22,9 @@ async function initializePyodide() {
     await micropip.install("lark")
   `);
 
-  const parseRunnerCode = await fetch('./py/parse_runner.py').then((res) => res.text());
+  const url = `./py/parse_runner.py`; // "/pulse/py/parse_runner.py"
+  const parseRunnerCode = await fetch(url).then((r) => r.text());
+
   await pyodide.runPythonAsync(parseRunnerCode);
 
   isReady = true;
